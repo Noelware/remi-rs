@@ -19,10 +19,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#![doc = include_str!("../README.md")]
+use std::path::{Path, PathBuf};
 
-mod config;
-mod service;
+use derive_builder::Builder;
 
-pub use crate::config::FilesystemStorageConfig;
-pub use crate::service::FilesystemStorageService;
+#[derive(Debug, Clone, Builder)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct FilesystemStorageConfig {
+    directory: String,
+}
+
+impl FilesystemStorageConfig {
+    /// Creates a new [`FilesystemStorageConfigBuilder`].
+    pub fn builder() -> FilesystemStorageConfigBuilder {
+        FilesystemStorageConfigBuilder::default()
+    }
+
+    /// Returns the directory that was configured as a [`PathBuf`]
+    pub fn directory(&self) -> PathBuf {
+        Path::new(&self.directory).to_path_buf()
+    }
+}

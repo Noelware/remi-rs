@@ -29,4 +29,8 @@ edition = "2021"
 # homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_s3"
 
 [dependencies]
+async-trait = "0.1.64"
+aws-config = "0.54.1"
+aws-sdk-s3 = "0.24.0"
+bytes = "1.4.0"
 remi-core = { path = "../../remi_core" }

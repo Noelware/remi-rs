@@ -25,7 +25,4 @@ members  = [
   "remi",
   "remi_core",
   "remi_support/fs",
-  "remi_support/s3",
-  "remi_support/gcs",
-  "remi_support/azure"
 ]

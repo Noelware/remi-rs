@@ -22,15 +22,13 @@
 #![doc = include_str!("../README.md")]
 
 pub use remi_core as core;
-
-#[cfg(feature = "fs")]
 pub use remi_fs as filesystem;
 
-#[cfg(feature = "s3")]
-pub use remi_s3 as s3;
+// #[cfg(feature = "s3")]
+// pub use remi_s3 as s3;
 
-#[cfg(feature = "gcs")]
-pub use remi_gcs as gcs;
+// #[cfg(feature = "gcs")]
+// pub use remi_gcs as gcs;
 
-#[cfg(feature = "azure")]
-pub use remi_azure as azure;
+// #[cfg(feature = "azure")]
+// pub use remi_azure as azure;
