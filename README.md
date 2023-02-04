@@ -5,6 +5,10 @@
 
 **remi-rs** is a Rust port of Noelware's Java-based [Remi](https://github.com/Noelware/remi) for the Rust programming language. It provides a easy way to implement storage-related communications with different storage providers like Amazon S3, Google Cloud Storage, Azure Blob Storage, and more.
 
+Noelware has ported the Java-based Remi libraries since we use Kotlin and Rust heavily in our products and services, so it made sense to have both support for **Remi** in Java and Rust.
+
+The **remi-rs** crates are very experimental, if you have any issues or any ways to optimize the crates, please submit a [issue](https://github.com/Noelware/remi-rs/issues/new). :3
+
 ## Supported
 - **Google Cloud Storage** [experimental] (with the `remi-gcs` crate)
 - **Azure Blob Storage** [experimental] (with the `remi-azure` crate)
