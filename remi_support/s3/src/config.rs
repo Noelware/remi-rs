@@ -31,14 +31,103 @@ use derive_builder::Builder;
 pub struct S3StorageConfig {
     enable_signer_v4_requests: bool,
     enforce_path_access_style: bool,
+
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "object_acl", skip_serializing_if = "Option::is_none")
+    )]
     default_object_acl: Option<ObjectCannedAcl>,
+
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "bucket_acl", skip_serializing_if = "Option::is_none")
+    )]
     default_bucket_acl: Option<BucketCannedAcl>,
     secret_access_key: String,
     access_key_id: String,
     endpoint: Option<String>,
     prefix: Option<String>,
+
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "region", skip_serializing_if = "Option::is_none")
+    )]
     region: Option<Region>,
     bucket: String,
+}
+
+#[cfg(feature = "serde")]
+mod region {
+    use std::borrow::Cow;
+
+    use aws_sdk_s3::Region;
+    use serde::*;
+
+    pub fn serialize<S: Serializer>(
+        region: &Option<Region>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match region {
+            Some(region) => serializer.serialize_str(region.as_ref()),
+            None => unreachable!(), // it shouldn't serialize if it is Option<None>
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Region>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Some(Region::new(Cow::Owned(s))))
+    }
+}
+
+#[cfg(feature = "serde")]
+mod bucket_acl {
+    use aws_sdk_s3::model::BucketCannedAcl;
+    use serde::*;
+
+    pub fn serialize<S: Serializer>(
+        acl: &Option<BucketCannedAcl>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match acl {
+            Some(acl) => serializer.serialize_str(acl.as_str()),
+            None => unreachable!(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<BucketCannedAcl>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Some(s.as_str().into()))
+    }
+}
+
+#[cfg(feature = "serde")]
+mod object_acl {
+    use aws_sdk_s3::model::ObjectCannedAcl;
+    use serde::*;
+
+    pub fn serialize<S: Serializer>(
+        acl: &Option<ObjectCannedAcl>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match acl {
+            Some(acl) => serializer.serialize_str(acl.as_str()),
+            None => unreachable!(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ObjectCannedAcl>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Some(s.as_str().into()))
+    }
 }
 
 impl S3StorageConfig {
