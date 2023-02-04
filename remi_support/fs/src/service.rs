@@ -20,6 +20,7 @@
 // SOFTWARE.
 
 use std::{
+    ffi::OsStr,
     io::{Error, Result},
     path::{Path, PathBuf},
 };
@@ -194,18 +195,35 @@ impl StorageService for FilesystemStorageService {
     async fn blobs<P: AsRef<Path> + Send>(
         &self,
         path: Option<P>,
-        _options: Option<ListBlobsRequest>,
+        options: Option<ListBlobsRequest>,
     ) -> Result<Vec<Blob>> {
-        // let options = match options {
-        //     Some(options) => options,
-        //     None => ListBlobsRequest::default(),
-        // };
+        let options = match options {
+            Some(options) => options,
+            None => ListBlobsRequest::default(),
+        };
 
         if path.is_none() {
             let path = self.config.directory();
-            trace!("listing all blobs in directory [{}]", path.display());
+            let prefix = options.prefix().unwrap_or("".into());
+            let normalized = self.normalize(path);
+            if normalized.is_none() {
+                return Ok(vec![]);
+            }
 
-            let mut items = read_dir(path).await?;
+            let normalized = normalized.unwrap();
+            if normalized.is_file() {
+                warn!(
+                    "not searching in path [{}] due to it being a file",
+                    normalized.display()
+                );
+
+                return Ok(vec![]);
+            }
+
+            let search_for = format!("{}{prefix}", normalized.display());
+            trace!("listing all blobs in directory [{search_for}]");
+
+            let mut items = read_dir(search_for).await?;
             let mut blobs: Vec<Blob> = Vec::new();
 
             while let Some(entry) = items.next_entry().await? {
@@ -222,6 +240,18 @@ impl StorageService for FilesystemStorageService {
                 }
 
                 let path = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if options.is_excluded(name) {
+                    continue;
+                }
+
+                let ext = path.extension().and_then(OsStr::to_str);
+                if let Some(ext) = ext {
+                    if !options.is_ext_allowed(ext) {
+                        continue;
+                    }
+                }
+
                 let metadata = entry.metadata().await;
 
                 // let last_modified_at = match &metadata {
@@ -263,7 +293,94 @@ impl StorageService for FilesystemStorageService {
             return Ok(blobs);
         }
 
-        Ok(vec![])
+        let path = path.unwrap();
+        let prefix = options.prefix().unwrap_or("".into());
+        let normalized = self.normalize(path.as_ref());
+        if normalized.is_none() {
+            return Ok(vec![]);
+        }
+
+        let normalized = normalized.unwrap();
+        if normalized.is_file() {
+            warn!(
+                "not searching in path [{}] due to it being a file",
+                normalized.display()
+            );
+
+            return Ok(vec![]);
+        }
+
+        let search_for = format!("{}{prefix}", normalized.display());
+        trace!("listing all blobs in directory [{search_for}]");
+
+        let mut items = read_dir(search_for).await?;
+        let mut blobs: Vec<Blob> = Vec::new();
+
+        while let Some(entry) = items.next_entry().await? {
+            if entry.path().is_dir() {
+                //let created_at = entry.metadata().await?.modified();
+                let dir_blob = DirectoryBlob::new(
+                    None,
+                    "fs".into(),
+                    entry.file_name().to_string_lossy().into_owned(),
+                );
+
+                blobs.push(Blob::Directory(dir_blob));
+                continue;
+            }
+
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if options.is_excluded(name) {
+                continue;
+            }
+
+            let ext = path.extension().and_then(OsStr::to_str);
+            if let Some(ext) = ext {
+                if !options.is_ext_allowed(ext) {
+                    continue;
+                }
+            }
+
+            let metadata = entry.metadata().await;
+
+            // let last_modified_at = match &metadata {
+            //     Ok(m) => Some(m.modified()?),
+            //     Err(_) => None,
+            // };
+
+            // let created_at = match &metadata {
+            //     Ok(m) => Some(m.modified()?),
+            //     Err(_) => None,
+            // };
+
+            // should this return a empty byte slice (as it is right now) or what?
+            let bytes = self.open(&path).await?.map_or(Bytes::new(), |x| x);
+            let is_symlink = match &metadata {
+                Ok(m) => m.is_symlink(),
+                Err(_) => false,
+            };
+
+            let size = match &metadata {
+                Ok(m) => m.len(),
+                Err(_) => 0,
+            };
+
+            let blob = FileBlob::new(
+                None,
+                None,
+                None,
+                is_symlink,
+                "fs".into(),
+                bytes,
+                entry.file_name().to_string_lossy().into_owned(),
+                size as usize,
+            );
+
+            blobs.push(Blob::File(blob));
+        }
+
+        Ok(blobs)
     }
 
     async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<()> {
@@ -308,7 +425,8 @@ impl StorageService for FilesystemStorageService {
             .open(path.clone())
             .await?;
 
-        let buf = options.content.as_ref();
+        let data = options.data();
+        let buf = data.as_ref();
         file.write_all(buf).await?;
 
         Ok(())

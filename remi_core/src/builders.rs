@@ -47,17 +47,47 @@ impl ListBlobsRequest {
     pub fn prefix(&self) -> Option<String> {
         self.prefix.clone()
     }
+
+    /// Checks if the given string is excluded or not.
+    pub fn is_excluded(&self, p: String) -> bool {
+        if self.excluded().is_empty() {
+            return false;
+        }
+
+        self.excluded.contains(&p)
+    }
+
+    /// Checks if the `ext` is allowed or not.
+    pub fn is_ext_allowed(&self, ext: &str) -> bool {
+        if self.extensions_allowed().is_empty() {
+            return false;
+        }
+
+        self.extensions.contains(&ext.to_string())
+    }
 }
 
+/// Represents a request object for the [`StorageService::upload`] method. It contains the
+/// content type and the inner data as `content` itself.
 #[derive(Debug, Builder)]
 pub struct UploadRequest {
-    pub content_type: String,
-    pub content: Bytes,
+    content_type: String,
+    content: Bytes,
 }
 
 impl UploadRequest {
     /// Creates a new [`UploadRequestBuilder`].
     pub fn builder() -> UploadRequestBuilder {
         UploadRequestBuilder::default()
+    }
+
+    /// Returns the content type of this file
+    pub fn content_type(&self) -> String {
+        self.content_type.clone()
+    }
+
+    /// Returns the inner [`Bytes`] for this file.
+    pub fn data(&self) -> Bytes {
+        self.content.clone()
     }
 }
