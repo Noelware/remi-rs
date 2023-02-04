@@ -406,23 +406,40 @@ impl StorageService for FilesystemStorageService {
 
     async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool> {
         let path = path.as_ref().to_path_buf();
-        Ok(path.exists())
+        let normalized = self.normalize(path);
+
+        // if we couldn't normalize the path, let's not do anything
+        if normalized.is_none() {
+            return Ok(false);
+        }
+
+        let normalized = normalized.unwrap();
+        Ok(normalized.exists())
     }
 
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<()> {
         let path = path.as_ref().to_path_buf();
-        if path.exists() {
+        let normalized = self.normalize(path);
+
+        // if we couldn't normalize the path, let's not do anything
+        if normalized.is_none() {
+            return Ok(());
+        }
+
+        let normalized = normalized.unwrap();
+        if normalized.exists() {
             warn!(
                 "file [{}] already exists, attempting to overwrite...",
-                path.display()
+                normalized.display()
             );
         }
 
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
-            .create_new(true)
-            .open(path.clone())
+            .create(true)
+            .truncate(true)
+            .open(normalized.clone())
             .await?;
 
         let data = options.data();
