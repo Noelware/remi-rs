@@ -19,14 +19,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-[workspace]
-resolver = "2"
-members  = [
-  "remi",
-  "remi_core",
-  "remi_support/fs",
-  "remi_support/s3",
-  "remi_support/gcs",
-  "remi_support/azure",
-  "remi_support/gridfs"
-]
+edition = "2021"
+newline_style = "Unix"

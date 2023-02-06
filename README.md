@@ -13,6 +13,7 @@ The **remi-rs** crates are very experimental, if you have any issues or any ways
 - **Google Cloud Storage** [experimental] (with the `remi-gcs` crate)
 - **Azure Blob Storage** [experimental] (with the `remi-azure` crate)
 - **Local Filesystem** (with the `remi-fs` crate)
+- **MongoDB GridFS** (with the `remi-gridfs` crate)
 - **Amazon S3** (with the `remi-s3` crate)
 
 ## Unsupported

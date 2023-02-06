@@ -22,5 +22,6 @@
 mod config;
 mod service;
 
-pub use config::{S3StorageConfig, S3StorageConfigBuilder, S3StorageConfigBuilderError};
-pub use service::S3StorageService;
+pub use config::{GridfsStorageConfig, GridfsStorageConfigBuilder, GridfsStorageConfigBuilderError};
+
+pub use service::GridfsStorageService;

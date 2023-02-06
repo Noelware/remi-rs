@@ -48,10 +48,7 @@ pub struct S3StorageConfig {
     endpoint: Option<String>,
     prefix: Option<String>,
 
-    #[cfg_attr(
-        feature = "serde",
-        serde(with = "region", skip_serializing_if = "Option::is_none")
-    )]
+    #[cfg_attr(feature = "serde", serde(with = "region", skip_serializing_if = "Option::is_none"))]
     region: Option<Region>,
     bucket: String,
 }
@@ -63,10 +60,7 @@ mod region {
     use aws_sdk_s3::Region;
     use serde::*;
 
-    pub fn serialize<S: Serializer>(
-        region: &Option<Region>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(region: &Option<Region>, serializer: S) -> Result<S::Ok, S::Error> {
         match region {
             Some(region) => serializer.serialize_str(region.as_ref()),
             None => unreachable!(), // it shouldn't serialize if it is Option<None>
@@ -87,10 +81,7 @@ mod bucket_acl {
     use aws_sdk_s3::model::BucketCannedAcl;
     use serde::*;
 
-    pub fn serialize<S: Serializer>(
-        acl: &Option<BucketCannedAcl>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(acl: &Option<BucketCannedAcl>, serializer: S) -> Result<S::Ok, S::Error> {
         match acl {
             Some(acl) => serializer.serialize_str(acl.as_str()),
             None => unreachable!(),
@@ -111,10 +102,7 @@ mod object_acl {
     use aws_sdk_s3::model::ObjectCannedAcl;
     use serde::*;
 
-    pub fn serialize<S: Serializer>(
-        acl: &Option<ObjectCannedAcl>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(acl: &Option<ObjectCannedAcl>, serializer: S) -> Result<S::Ok, S::Error> {
         match acl {
             Some(acl) => serializer.serialize_str(acl.as_str()),
             None => unreachable!(),
