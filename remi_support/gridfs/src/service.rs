@@ -41,7 +41,10 @@ use remi_core::{
 use crate::GridfsStorageConfig;
 
 fn to_io_error(error: mongodb::error::Error) -> Error {
-    Error::new(std::io::ErrorKind::Other, format!("mongodb: {}", error.kind.as_ref()))
+    Error::new(
+        std::io::ErrorKind::Other,
+        format!("mongodb: {}", error.kind.as_ref()),
+    )
 }
 
 #[derive(Debug, Clone)]
@@ -94,8 +97,11 @@ impl StorageService for GridfsStorageService {
         }
 
         if let Some(pref) = self.config.read_preference() {
-            find_one_opts.selection_criteria = Some(mongodb::options::SelectionCriteria::ReadPreference(pref.clone()));
-            find_options.selection_criteria = Some(mongodb::options::SelectionCriteria::ReadPreference(pref));
+            find_one_opts.selection_criteria = Some(
+                mongodb::options::SelectionCriteria::ReadPreference(pref.clone()),
+            );
+            find_options.selection_criteria =
+                Some(mongodb::options::SelectionCriteria::ReadPreference(pref));
         }
 
         // First, we need to find the file. Which will be in "bucket_name.files",
@@ -156,7 +162,8 @@ impl StorageService for GridfsStorageService {
         }
 
         if let Some(pref) = self.config.read_preference() {
-            find_one_opts.selection_criteria = Some(mongodb::options::SelectionCriteria::ReadPreference(pref));
+            find_one_opts.selection_criteria =
+                Some(mongodb::options::SelectionCriteria::ReadPreference(pref));
         }
 
         // First, we need to find the file. Which will be in "bucket_name.files",
@@ -211,7 +218,8 @@ impl StorageService for GridfsStorageService {
         }
 
         if let Some(pref) = self.config.read_preference() {
-            find_one_opts.selection_criteria = Some(mongodb::options::SelectionCriteria::ReadPreference(pref));
+            find_one_opts.selection_criteria =
+                Some(mongodb::options::SelectionCriteria::ReadPreference(pref));
         }
 
         let file = files
