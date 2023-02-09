@@ -435,10 +435,8 @@ impl StorageService for FilesystemStorageService {
         }
 
         let mut file = OpenOptions::new()
-            .read(true)
             .write(true)
-            .create(true)
-            .truncate(true)
+            .create_new(true)
             .open(normalized.clone())
             .await?;
 
