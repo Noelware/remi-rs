@@ -39,6 +39,6 @@ derive_builder = "0.12.0"
 dirs = "4.0.0"
 futures = "0.3.25"
 log = "0.4.17"
-remi-core = { path = "../../remi_core" }
+remi-core = "0.1.0"
 serde = { version = "1.0.152", features = ["derive"], optional = true }
 tokio = { version = "1.25.0", features = ["full"] }

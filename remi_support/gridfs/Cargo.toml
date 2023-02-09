@@ -39,7 +39,7 @@ derive_builder = "0.12.0"
 log = "0.4.17"
 mongodb = "2.3.1"
 mongodb-gridfs = "0.2.3"
-remi-core = { path = "../../remi_core" }
+remi-core = "0.1.0"
 serde = { version = "1.0.152", features = ["derive"], optional = true }
 tokio = { version = "1.25.0", features = ["full"] }
 tokio-stream = "0.1.11"

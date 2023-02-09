@@ -4,6 +4,10 @@ The **remi-fs** crate implements the [remi-core](https://github.com/Noelware/rem
 
 **remi-fs** only supports the Tokio runtime, async-std and other asynchronous rumtimes might be supported in the future.
 
+## Features
+### serde [disabled by default]
+Enables the use of **serde** for the `FilesystemStorageConfig` struct.
+
 ## Usage
 ```toml
 [dependencies]
