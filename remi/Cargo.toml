@@ -22,7 +22,7 @@
 [package]
 name = "remi"
 description = "🐻‍❄️🧶 Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers"
-version = "0.1.1"
+version = "0.1.2"
 repository = "https://github.com/Noelware/remi-rs/tree/master/remi"
 license = "MIT"
 edition = "2021"
@@ -37,5 +37,5 @@ fs = ["dep:remi-fs"]
 [dependencies]
 remi-gridfs = { version = "0.1.0", optional = true }
 remi-core = "0.1.0"
-remi-fs = { version = "0.1.1", optional = true }
+remi-fs = { version = "0.1.2", optional = true }
 remi-s3 = { version = "0.1.0", optional = true }
