@@ -434,6 +434,9 @@ impl StorageService for FilesystemStorageService {
             );
         }
 
+        // create all the missing parent directories before
+        // creating a new file
+        create_dir_all(normalized.clone()).await?;
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
