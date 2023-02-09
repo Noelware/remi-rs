@@ -10,11 +10,13 @@ Noelware has ported the Java-based Remi libraries since we use Kotlin and Rust h
 The **remi-rs** crates are very experimental, if you have any issues or any ways to optimize the crates, please submit a [issue](https://github.com/Noelware/remi-rs/issues/new). :3
 
 ## Supported
-- **Google Cloud Storage** [experimental] (with the `remi-gcs` crate)
-- **Azure Blob Storage** [experimental] (with the `remi-azure` crate)
 - **Local Filesystem** (with the `remi-fs` crate)
 - **MongoDB GridFS** (with the `remi-gridfs` crate)
 - **Amazon S3** (with the `remi-s3` crate)
+
+## Coming Soon
+- **Google Cloud Storage**
+- **Azure Blob Storage**
 
 ## Unsupported
 - Oracle Cloud Infrastructure Object Storage

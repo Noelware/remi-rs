@@ -7,8 +7,9 @@ The **remi** crate is just a re-export of all the available crates that are avai
 ```toml
 [dependencies]
 # this will export the following modules:
-#   remi::core (remi-core)
-#   remi::fs   (remi-fs)
-#   remi::s3   (remi-s3)
+#   remi::gridfs (remi-gridfs)
+#   remi::core   (remi-core)
+#   remi::fs     (remi-fs)
+#   remi::s3     (remi-s3)
 remi = { version = "0.1.0", features = ["fs", "s3"] }
 ```

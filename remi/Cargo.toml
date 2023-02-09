@@ -28,16 +28,14 @@ license = "MIT"
 edition = "2021"
 # homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi"
 
-# [features]
-# default = ["fs"]
-# azure = ["dep:remi-azure"]
-# gcs = ["dep:remi-gcs"]
-# s3 = ["dep:remi-s3"]
-# fs = ["dep:remi-fs"]
+[features]
+default = ["fs"]
+gridfs = ["dep:remi-gridfs"]
+s3 = ["dep:remi-s3"]
+fs = ["dep:remi-fs"]
 
 [dependencies]
-# remi-azure = { path = "../remi_support/azure", optional = true }
+remi-gridfs = { path = "../remi_support/gridfs", optional = true }
 remi-core = { path = "../remi_core" }
-remi-fs = { path = "../remi_support/fs" }
-# remi-gcs = { path = "../remi_support/gcs", optional = true }
-# remi-s3 = { path = "../remi_support/s3", optional = true }
+remi-fs = { path = "../remi_support/fs", optional = true }
+remi-s3 = { path = "../remi_support/s3", optional = true }

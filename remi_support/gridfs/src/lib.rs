@@ -22,6 +22,8 @@
 mod config;
 mod service;
 
-pub use config::{GridfsStorageConfig, GridfsStorageConfigBuilder, GridfsStorageConfigBuilderError};
+pub use config::{
+    GridfsStorageConfig, GridfsStorageConfigBuilder, GridfsStorageConfigBuilderError,
+};
 
 pub use service::GridfsStorageService;
