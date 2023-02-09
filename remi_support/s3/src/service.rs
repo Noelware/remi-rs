@@ -54,13 +54,15 @@ impl S3StorageService {
     /// Creates a new [`S3StorageService`] from the configuration object given.
     pub fn new(config: S3StorageConfig) -> S3StorageService {
         let mut sdk_config = Config::builder();
-        sdk_config.set_credentials_provider(Some(SharedCredentialsProvider::new(Credentials::new(
-            config.access_key_id(),
-            config.secret_access_key(),
-            None,
-            None,
-            "remi-rs",
-        ))));
+        sdk_config.set_credentials_provider(Some(SharedCredentialsProvider::new(
+            Credentials::new(
+                config.access_key_id(),
+                config.secret_access_key(),
+                None,
+                None,
+                "remi-rs",
+            ),
+        )));
 
         sdk_config.set_endpoint_url(Some(config.endpoint()));
         sdk_config.set_app_name(Some(AppName::new("remi-rs").unwrap()));
@@ -105,7 +107,12 @@ impl StorageService for S3StorageService {
         info!("initializing the s3 storage service...");
 
         // Check if the bucket exists
-        let bucket_req = self.client.list_buckets().send().await.map_err(|x| to_io_error!(x))?;
+        let bucket_req = self
+            .client
+            .list_buckets()
+            .send()
+            .await
+            .map_err(|x| to_io_error!(x))?;
 
         let buckets = bucket_req.buckets().unwrap_or_default();
         let has_bucket = buckets.iter().any(|x| {
@@ -151,7 +158,10 @@ impl StorageService for S3StorageService {
                 let stream = obj.body;
 
                 let mut reader = BufReader::new(stream.into_async_read());
-                reader.read_exact(&mut bytes).await.map_err(|x| to_io_error!(x))?;
+                reader
+                    .read_exact(&mut bytes)
+                    .await
+                    .map_err(|x| to_io_error!(x))?;
 
                 Ok(Some(bytes.into()))
             }
@@ -187,7 +197,10 @@ impl StorageService for S3StorageService {
                 let stream = obj.body;
 
                 let mut reader = BufReader::new(stream.into_async_read());
-                reader.read_exact(&mut bytes).await.map_err(|x| to_io_error!(x))?;
+                reader
+                    .read_exact(&mut bytes)
+                    .await
+                    .map_err(|x| to_io_error!(x))?;
 
                 // let last_modified_at = obj.last_modified();
 
