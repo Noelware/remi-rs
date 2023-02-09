@@ -35,8 +35,7 @@ As this library is asynchronously only, you will need to configure an asynchrono
 
 The main crate (`remi`) is the only one you should import since it'll import the other crates based off what features you want Cargo to use. The available features are:
 
-- **azure** - Enables the [Azure Blob Storage](https://docs.rs/remi-azure) crate.
-- **gcs** - Enables the [Google Cloud Storage](https://docs.rs/remi-gcs) crate.
+- **gridfs** - Enables the [MongoDB GridFS](https://docs.rs/remi-gridfs) crate.
 - **s3** - Enables the [Amazon S3](https://docs.rs/remi-s3) crate.
 - **fs** - Enables the [local filesystem](https://docs.rs/remi-fs) crate, enabled by default. Requires the Tokio runtime
 
