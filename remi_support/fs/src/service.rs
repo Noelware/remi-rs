@@ -435,8 +435,13 @@ impl StorageService for FilesystemStorageService {
         }
 
         // create all the missing parent directories before
-        // creating a new file
-        create_dir_all(normalized.clone()).await?;
+        // creating a new file. If the parent is present,
+        // then we will need to create the directories so
+        // it doesn't fail with "file or directory not found"
+        if let Some(parent) = normalized.parent() {
+            create_dir_all(parent).await?;
+        }
+
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -446,6 +451,7 @@ impl StorageService for FilesystemStorageService {
         let data = options.data();
         let buf = data.as_ref();
         file.write_all(buf).await?;
+        file.flush().await?; // flush the changes that reaches to the file.
 
         Ok(())
     }
@@ -462,7 +468,13 @@ impl FilesystemStorageService {
         }
     }
 
-    pub(crate) fn normalize<P: AsRef<Path>>(&self, path: P) -> Option<PathBuf> {
+    /// Normalizes a given path and returns a normalized path that matches the following:
+    ///
+    /// - If the path starts with `./`, then it will resolve `./` from the current
+    ///   directory.
+    /// - If the path starts with `~/`, then it will resolve `~/` as the home directory
+    ///   from the [`dirs::home_dir`] function.
+    pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Option<PathBuf> {
         let path = path.as_ref();
         if path == self.config.directory() {
             warn!("[path] argument was the config directory, returning that");
