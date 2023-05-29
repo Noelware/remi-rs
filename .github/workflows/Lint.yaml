@@ -75,7 +75,7 @@ jobs:
               run: cargo build
 
             - name: Lint with Clippy!
-              uses: auguwu/clippy-action@1.1.0
+              uses: auguwu/clippy-action@1.1.1
               with:
                 all-features: true
                 token: ${{secrets.GITHUB_TOKEN}}
