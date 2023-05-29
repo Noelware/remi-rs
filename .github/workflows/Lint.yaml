@@ -19,72 +19,63 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# name: Clippy and rustfmt
-# on:
-#   workflow_dispatch: {}
-#   push:
-#     branches:
-#       - 'feature/**'
-#       - 'issue/gh-**'
-#       - master
+name: CI
+on:
+    workflow_dispatch: {}
+    pull_request:
+        types: [opened, synchronize]
+        branches:
+            - 'issue/gh-**'
+            - 'feat/**'
 
-#     paths-ignore:
-#       - '.github/**'
-#       - 'docker/**'
-#       - 'scripts/**'
-#       - '.dockerignore'
-#       - '.gitignore'
-#       - '**.md'
-#       - 'LICENSE'
-#   pull_request:
-#     branches:
-#       - 'feature/**'
-#       - 'issue/gh-**'
-#       - master
+        paths-ignore:
+            - 'assets/**'
+            - .dockerignore
+            - .gitignore
+            - '**.md'
+            - LICENSE
+            - renovate.json
+    push:
+        branches:
+            - 'issue/gh-**'
+            - 'feat/**'
+            - master
 
-#     paths-ignore:
-#       - '.github/**'
-#       - 'docker/**'
-#       - 'scripts/**'
-#       - '.dockerignore'
-#       - '.gitignore'
-#       - '**.md'
-#       - 'LICENSE'
-# jobs:
-#   release:
-#     name: Linting and Formatting (rustfmt, clippy)
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v3
-#         with:
-#           submodules: 'true'
+        paths-ignore:
+            - '.github/**'
+            - '.coder/**'
+            - '.vscode/**'
+            - 'assets/**'
+            - '.*ignore'
+            - '**.md'
+            - LICENSE
+            - renovate.json
+jobs:
+    rust:
+        name: Rust CI [${{matrix.rust-version}} on ${{matrix.runner == 'ubuntu-latest' && 'Linux (x86_64)' || matrix.runner == 'windows-latest' && 'Windows' || matrix.runner == 'macos-latest' && 'macOS' || matrix.runner == 'self-hosted' && 'Linux (arm64)' || matrix.runner}}]
+        runs-on: ${{matrix.runner}}
+        strategy:
+            matrix:
+                rust-version: [stable, nightly]
+                runner: [ubuntu-latest, windows-latest, macos-latest, self-hosted]
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
 
-#       - name: Setup Rust
-#         uses: actions-rs/toolchain@v1
-#         with:
-#           profile: minimal
-#           toolchain: nightly
-#           override: true
-#           components: rustfmt, clippy
+            - name: Setup Rust toolchain
+              uses: dtolnay/rust-toolchain@master
+              with:
+                toolchain: ${{matrix.rust-version}}
+                components: clippy, rustfmt
 
-#       - name: Setup Rust cache
-#         uses: Swatinem/rust-cache@v2
+            - name: Setup Rust cache
+              uses: Swatinem/rust-cache@v2
 
-#       - name: Check for compile errors
-#         uses: actions-rs/cargo@v1
-#         with:
-#           command: build
-#         env:
-#           CARGO_INCREMENTAL: 1
+            - name: Pull dependencies
+              run: cargo build
 
-#       - name: Lint with `clippy`
-#         uses: actions-rs/clippy-check@v1
-#         with:
-#           token: ${{ secrets.GITHUB_TOKEN }}
-#           args: --all-features
-
-#       - name: Format with `rustfmt`
-#         uses: mbrobbel/rustfmt-check@master
-#         with:
-#           token: ${{ secrets.NOEL_TOKEN }}
+            - name: Lint with Clippy!
+              uses: auguwu/clippy-action@master
+              if: matrix.runner == 'ubuntu-latest' && matrix.rust-version == 'stable'
+              with:
+                all-features: true
