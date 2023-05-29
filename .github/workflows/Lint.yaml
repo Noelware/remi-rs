@@ -73,9 +73,27 @@ jobs:
 
             - name: Pull dependencies
               run: cargo build
+    clippy:
+        name: Clippy (${{matrix.rust-version}})
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                rust-version: [stable, nightly]
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
 
-            - name: Lint with Clippy!
-              uses: auguwu/clippy-action@1.1.1
+            - name: Setup Rust toolchain
+              uses: dtolnay/rust-toolchain@master
+              with:
+                toolchain: ${{matrix.rust-version}}
+                components: clippy, rustfmt
+
+            - name: Setup Rust cache
+              uses: Swatinem/rust-cache@v2
+
+            - name: Clippy!
+              uses: auguwu/clippy-action@1.1.2
               with:
                 all-features: true
                 token: ${{secrets.GITHUB_TOKEN}}
