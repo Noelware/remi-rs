@@ -28,8 +28,20 @@ use blob::Blob;
 use builders::{ListBlobsRequest, UploadRequest};
 use bytes::Bytes;
 
+#[deprecated(
+    since = "0.2.0",
+    reason = "Use remi_core::Blob instead of remi_core::blob::Blob. Scheduled to be removed in 0.3.0"
+)]
 pub mod blob;
+
+#[deprecated(
+    since = "0.2.0",
+    reason = "Builder APIs will now be in global module (remi_core::ListRequestBuilder) instead of builders module. Scheduled to be removed in 0.3.0"
+)]
 pub mod builders;
+
+pub use blob::*;
+pub use builders::*;
 
 /// `StorageService` is the base primitive for implementing a storage backend. This is the main trait
 /// you should implement if you're creating your own storage backend with **remi-rs**. Please refer to the

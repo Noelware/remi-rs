@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
 # Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
 #
@@ -19,27 +21,45 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-[package]
-name = "remi-gridfs"
-description = "🐻‍❄️🧶 MongoDB GridFS implementation for remi-rs"
-version = "0.0.0-devel.0"
-repository = "https://github.com/Noelware/remi-rs/tree/master/support/remi_gridfs"
-license = "MIT"
-edition = "2021"
-# homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_s3"
+set -e
 
-[features]
-default = ["serde"]
-serde = ["dep:serde"]
+BASH_SRC=${BASH_SOURCE[0]}
+while [ -L "$BASH_SRC" ]; do
+    target=$(readlink "$BASH_SRC")
+    if [[ $target == /* ]]; then
+        BASH_SRC=$target
+    else
+        dir=$(dirname "$BASH_SRC")
+        BASH_SRC=$dir/$target
+    fi
+done
 
-[dependencies]
-async-trait = "0.1.64"
-bytes = "1.4.0"
-derive_builder = "0.12.0"
-log = "0.4.17"
-mongodb = "2.3.1"
-mongodb-gridfs = "0.2.3"
-remi-core = "0.1.0"
-serde = { version = "1.0.152", features = ["derive"], optional = true }
-tokio = { version = "1.25.0", features = ["full"] }
-tokio-stream = "0.1.11"
+SCRIPTS_DIR=$(cd -P "$(dirname "$BASH_SRC")" >/dev/null 2>&1 && pwd)
+ROOT_DIR="${SCRIPTS_DIR}/.."
+
+if ! [ -f "$ROOT_DIR/.remi-version" ]; then
+    echo "[remi::scripts] You must be in the root directory to use this script."
+    exit 1
+fi
+
+version=$(cat "$ROOT_DIR/.remi-version")
+
+if [ -z "${CRATES_IO_TOKEN}" ]; then
+    echo "[remi::scripts] Missing \`CRATES_IO_TOKEN\` environment variable"
+fi
+
+remi::publish() {
+    # if [ "${crates[@]}" -eq 0 ]; then
+    #     echo "[remi::scripts] All crates will be updated to $version"
+    # fi
+
+    # if [ "${crates[@]}" -gt 0 ]; then
+    #     echo "[remi::scripts] Only crates $(IFS=', ' "${crates[@]}") will be published."
+    # fi
+}
+
+remi::crate::publish() {
+    local crate="$1"
+}
+
+remi::publish $@

@@ -21,10 +21,11 @@
 
 [workspace]
 resolver = "2"
+exclude  = ["dist/", "remi_support/azure", "remi_support/gcs"]
 members  = [
-  "remi",
-  "remi_core",
-  "remi_support/fs",
-  "remi_support/s3",
-  "remi_support/gridfs"
+    "remi/",
+    "remi_core/",
+    "remi_support/fs",
+    "remi_support/s3",
+    "remi_support/gridfs",
 ]

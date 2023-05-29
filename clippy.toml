@@ -19,27 +19,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-[package]
-name = "remi-gridfs"
-description = "🐻‍❄️🧶 MongoDB GridFS implementation for remi-rs"
-version = "0.0.0-devel.0"
-repository = "https://github.com/Noelware/remi-rs/tree/master/support/remi_gridfs"
-license = "MIT"
-edition = "2021"
-# homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_s3"
-
-[features]
-default = ["serde"]
-serde = ["dep:serde"]
-
-[dependencies]
-async-trait = "0.1.64"
-bytes = "1.4.0"
-derive_builder = "0.12.0"
-log = "0.4.17"
-mongodb = "2.3.1"
-mongodb-gridfs = "0.2.3"
-remi-core = "0.1.0"
-serde = { version = "1.0.152", features = ["derive"], optional = true }
-tokio = { version = "1.25.0", features = ["full"] }
-tokio-stream = "0.1.11"
+msrv = "1.64.0"

@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-# Copyright (c) 2022-2023 Noelware <team@noelware.org>
+# Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,72 +19,72 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: Clippy and rustfmt
-on:
-  workflow_dispatch: {}
-  push:
-    branches:
-      - 'feature/**'
-      - 'issue/gh-**'
-      - master
+# name: Clippy and rustfmt
+# on:
+#   workflow_dispatch: {}
+#   push:
+#     branches:
+#       - 'feature/**'
+#       - 'issue/gh-**'
+#       - master
 
-    paths-ignore:
-      - '.github/**'
-      - 'docker/**'
-      - 'scripts/**'
-      - '.dockerignore'
-      - '.gitignore'
-      - '**.md'
-      - 'LICENSE'
-  pull_request:
-    branches:
-      - 'feature/**'
-      - 'issue/gh-**'
-      - master
+#     paths-ignore:
+#       - '.github/**'
+#       - 'docker/**'
+#       - 'scripts/**'
+#       - '.dockerignore'
+#       - '.gitignore'
+#       - '**.md'
+#       - 'LICENSE'
+#   pull_request:
+#     branches:
+#       - 'feature/**'
+#       - 'issue/gh-**'
+#       - master
 
-    paths-ignore:
-      - '.github/**'
-      - 'docker/**'
-      - 'scripts/**'
-      - '.dockerignore'
-      - '.gitignore'
-      - '**.md'
-      - 'LICENSE'
-jobs:
-  release:
-    name: Linting and Formatting (rustfmt, clippy)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: 'true'
+#     paths-ignore:
+#       - '.github/**'
+#       - 'docker/**'
+#       - 'scripts/**'
+#       - '.dockerignore'
+#       - '.gitignore'
+#       - '**.md'
+#       - 'LICENSE'
+# jobs:
+#   release:
+#     name: Linting and Formatting (rustfmt, clippy)
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+#         with:
+#           submodules: 'true'
 
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: rustfmt, clippy
+#       - name: Setup Rust
+#         uses: actions-rs/toolchain@v1
+#         with:
+#           profile: minimal
+#           toolchain: nightly
+#           override: true
+#           components: rustfmt, clippy
 
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+#       - name: Setup Rust cache
+#         uses: Swatinem/rust-cache@v2
 
-      - name: Check for compile errors
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-        env:
-          CARGO_INCREMENTAL: 1
+#       - name: Check for compile errors
+#         uses: actions-rs/cargo@v1
+#         with:
+#           command: build
+#         env:
+#           CARGO_INCREMENTAL: 1
 
-      - name: Lint with `clippy`
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+#       - name: Lint with `clippy`
+#         uses: actions-rs/clippy-check@v1
+#         with:
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           args: --all-features
 
-      - name: Format with `rustfmt`
-        uses: mbrobbel/rustfmt-check@master
-        with:
-          token: ${{ secrets.NOEL_TOKEN }}
+#       - name: Format with `rustfmt`
+#         uses: mbrobbel/rustfmt-check@master
+#         with:
+#           token: ${{ secrets.NOEL_TOKEN }}

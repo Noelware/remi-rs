@@ -21,6 +21,8 @@
 
 use bytes::Bytes;
 
+const SYMLINK_BIT: usize = 1 << 1;
+
 /// Represents metadata about a file or directory. As this is a enum, you will need to determine if
 /// this blob is a directory or file blob.
 #[derive(Debug, Clone)]
@@ -65,7 +67,7 @@ impl FileBlob {
     ) -> FileBlob {
         let mut flags = 0;
         if symlink {
-            flags = 1;
+            flags = SYMLINK_BIT;
         }
 
         FileBlob {
@@ -83,7 +85,7 @@ impl FileBlob {
     /// Checks if this [`FileBlob`] is a symbolic link or not. If the filesystem service determines that
     /// a file is a symbolic link, it will not be de-referenced.
     pub fn is_symlink(&self) -> bool {
-        (self.flags & (1 << 1)) != 0
+        (self.flags & SYMLINK_BIT) != 0
     }
 
     /// Returns the last modified data of this file. This can be a `Option::None` variant if this

@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-# Copyright (c) 2022-2023 Noelware <team@noelware.org>
+# Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 [package]
 name = "remi-s3"
 description = "🐻‍❄️🧶 Amazon S3 implementation for remi-rs"
-version = "0.1.0"
+version = "0.0.0-devel.0"
 repository = "https://github.com/Noelware/remi-rs/tree/master/support/remi_s3"
 license = "MIT"
 edition = "2021"
