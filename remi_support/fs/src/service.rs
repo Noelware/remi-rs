@@ -22,9 +22,19 @@
 use std::{
     ffi::OsStr,
     io::Result,
-    os::unix::prelude::MetadataExt,
     path::{Path, PathBuf},
 };
+
+#[cfg(target_family = "unix")]
+use std::os::unix::prelude::*;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::MetadataExt;
+
+#[cfg(not(any(target_family = "unix", target_os = "windows")))]
+compile_error!(
+    "remi_fs doesn't support any target that isn't Windows, macOS, or Linux at the moment."
+);
 
 use bytes::Bytes;
 
@@ -209,8 +219,19 @@ impl StorageService for FilesystemStorageService {
             return Ok(Some(Blob::Directory(dir_blob)));
         }
 
+        #[cfg(target_family = "unix")]
         let _last_modified_at = normalized.metadata()?.modified()?;
+
+        // last_access_at is a u64, not SystemTime on Windows
+        #[cfg(target_os = "windows")]
+        let _last_modified_at = normalized.metadata()?.last_access_at();
+
+        #[cfg(target_family = "unix")]
         let _created_at = normalized.metadata()?.created()?;
+
+        // creation_time is a u64, not SystemTime on Windows
+        #[cfg(target_os = "windows")]
+        let _created_at = normalized.metadata()?.creation_time();
 
         // should this return a empty byte slice (as it is right now) or what?
         let bytes = self.open(&normalized).await?.map_or(Bytes::new(), |x| x);
