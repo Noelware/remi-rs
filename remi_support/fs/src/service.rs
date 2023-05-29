@@ -219,19 +219,19 @@ impl StorageService for FilesystemStorageService {
             return Ok(Some(Blob::Directory(dir_blob)));
         }
 
-        #[cfg(target_family = "unix")]
-        let _last_modified_at = normalized.metadata()?.modified()?;
+        // #[cfg(target_family = "unix")]
+        // let _last_modified_at = normalized.metadata()?.modified()?;
 
-        // last_access_at is a u64, not SystemTime on Windows
-        #[cfg(target_os = "windows")]
-        let _last_modified_at = normalized.metadata()?.last_access_at();
+        // // last_access_at is a u64, not SystemTime on Windows
+        // #[cfg(target_os = "windows")]
+        // let _last_modified_at = normalized.metadata()?.last_access_at();
 
-        #[cfg(target_family = "unix")]
-        let _created_at = normalized.metadata()?.created()?;
+        // #[cfg(target_family = "unix")]
+        // let _created_at = normalized.metadata()?.created()?;
 
-        // creation_time is a u64, not SystemTime on Windows
-        #[cfg(target_os = "windows")]
-        let _created_at = normalized.metadata()?.creation_time();
+        // // creation_time is a u64, not SystemTime on Windows
+        // #[cfg(target_os = "windows")]
+        // let _created_at = normalized.metadata()?.creation_time();
 
         // should this return a empty byte slice (as it is right now) or what?
         let bytes = self.open(&normalized).await?.map_or(Bytes::new(), |x| x);
