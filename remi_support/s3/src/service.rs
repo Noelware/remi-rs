@@ -21,22 +21,15 @@
 
 use std::{io::Result, path::Path};
 
+use crate::config::S3StorageConfig;
 use async_trait::async_trait;
-
 use aws_config::AppName;
 use aws_credential_types::provider::SharedCredentialsProvider;
 use aws_sdk_s3::{model::Object, types::ByteStream, Client, Config, Credentials};
 use bytes::{Bytes, BytesMut};
-use remi_core::{
-    blob::{Blob, DirectoryBlob, FileBlob},
-    builders::{ListBlobsRequest, UploadRequest},
-    StorageService,
-};
-
 use log::*;
+use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 use tokio::io::{AsyncReadExt, BufReader};
-
-use crate::config::S3StorageConfig;
 
 #[derive(Debug, Clone)]
 pub struct S3StorageService {
@@ -103,6 +96,10 @@ impl S3StorageService {
 
 #[async_trait]
 impl StorageService for S3StorageService {
+    fn name(self) -> &'static str {
+        "remi:s3"
+    }
+
     async fn init(&self) -> Result<()> {
         info!("initializing the s3 storage service...");
 
@@ -140,7 +137,7 @@ impl StorageService for S3StorageService {
         Ok(())
     }
 
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>> {
+    async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
         let normalized = self.resolve_path(path.as_ref());
         trace!("opening file {normalized}...");
 
@@ -177,7 +174,7 @@ impl StorageService for S3StorageService {
         }
     }
 
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>> {
+    async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>> {
         let path = path.as_ref();
         let normalized = self.resolve_path(path);
         trace!("opening file {normalized}...");
@@ -228,9 +225,9 @@ impl StorageService for S3StorageService {
         }
     }
 
-    async fn blobs<P: AsRef<Path> + Send>(
+    async fn blobs(
         &self,
-        path: Option<P>,
+        path: Option<impl AsRef<Path> + Send>,
         options: Option<ListBlobsRequest>,
     ) -> Result<Vec<Blob>> {
         let _options = match options {
@@ -264,7 +261,7 @@ impl StorageService for S3StorageService {
                         }
 
                         Err(e) => {
-                            warn!("skipping error [{e}] when listing objects, this object will not be present in the final result");
+                            warn!("skipping error [{e}] when listing objects, object [{name:?}] will not be present in the final result");
                             continue;
                         }
 
@@ -299,13 +296,19 @@ impl StorageService for S3StorageService {
             trace!("found {} entries", entries.len());
 
             for entry in entries {
+                let name = entry.key();
+                if name.is_none() {
+                    trace!("skipping entry due to no name");
+                    continue;
+                }
+
                 match self.s3_obj_to_blob(entry).await {
                     Ok(Some(blob)) => {
                         blobs.push(blob);
                     }
 
                     Err(e) => {
-                        warn!("skipping error [{e}] when listing objects, this object will not be present in the final result");
+                        warn!("skipping error [{e}] when listing objects, object [{name:?}] will not be present in the final result");
                         continue;
                     }
 
@@ -323,7 +326,7 @@ impl StorageService for S3StorageService {
         Ok(blobs)
     }
 
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<()> {
+    async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()> {
         self.client
             .delete_object()
             .bucket(self.config.bucket())
@@ -334,7 +337,7 @@ impl StorageService for S3StorageService {
             .map_err(|x| to_io_error!(x))
     }
 
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool> {
+    async fn exists(&self, path: impl AsRef<Path> + Send) -> Result<bool> {
         let res = self
             .client
             .head_object()
@@ -354,19 +357,20 @@ impl StorageService for S3StorageService {
                 true
             });
 
-        if let Err(e) = res {
-            let inner = e.into_service_error();
-            if inner.is_not_found() {
-                return Ok(false);
+        match res {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                let inner = e.into_service_error();
+                if inner.is_not_found() {
+                    return Ok(false);
+                }
+
+                return Err(to_io_error!(inner));
             }
-
-            return Err(to_io_error!(inner));
         }
-
-        Ok(res.unwrap())
     }
 
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<()> {
+    async fn upload(&self, path: impl AsRef<Path> + Send, options: UploadRequest) -> Result<()> {
         let path = self.resolve_path(path);
         let content_type = options.content_type();
 

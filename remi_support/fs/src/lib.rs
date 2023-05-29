@@ -19,7 +19,60 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#![doc = include_str!("../README.md")]
+//! # 🐻‍❄️🧶 remi_fs
+//! **remi_fs** is a crate implementation of [StorageService] that interacts with the local filesystem. This crate is also re-exported
+//! in the [remi](https://docs.rs/remi) crate with the `fs` crate feature.
+//!
+//! **remi_fs** supports using async-std and Tokio as the async runtime, which will delegate using `async_std::fs` or
+//! `tokio::fs` modules.
+//!
+//! ## Crate Features
+//! ### serde [disabled by default]
+//! Enables the use of **serde** for the [`FilesystemStorageConfig`] struct, which will allow you to configure
+//! the [`FilesystemStorageService`] struct from anything that can be deserialized from.
+//!
+//! ### async_std [disabled by default]
+//! Enables using **async_std** for filesystem operations, instead of **Tokio**.
+//!
+//! ## Usage
+//! This example will use Tokio, but uses the `remi` crate since the filesystem is the default
+//! feature for it.
+//!
+//! ```toml
+//! [dependencies]
+//! bytes = "1"
+//! remi = { version = "0.2" }
+//! tokio = { version = "1", features = ["fs"] }
+//! ```
+//!
+//! ```no_run
+//! use remi::filesystem::FilesystemStorageService;
+//! use remi::builders::UploadRequest;
+//! use bytes::Bytes;
+//!
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!    let fs = FilesystemStorageService::new("./.data");
+//!
+//!    // init() will create the directory that was passed above
+//!    // if it doesn't exist on the disk
+//!    fs.init().await?;
+//!
+//!    // now, let's open a file that doesn't exist
+//!    let file = fs.open("./owo.txt").await?;
+//!    // "file" will be None since the file doesn't exist on the disk
+//!
+//!    // let's create the file
+//!    fs.upload("./owo.txt", UploadRequest::builder()
+//!        .content(Bytes::new())
+//!        .content_type("text/plain")
+//!        .build()?
+//!    ).await?;
+//!
+//!    // now, let's read the file again
+//!    let file = fs.open("./owo.txt").await?;
+//!    // "file" is now Some(Blob::File).
+//! }
+//! ```
 
 mod config;
 mod service;

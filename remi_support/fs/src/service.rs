@@ -21,35 +21,98 @@
 
 use std::{
     ffi::OsStr,
-    io::{Error, Result},
+    io::Result,
+    os::unix::prelude::MetadataExt,
     path::{Path, PathBuf},
 };
 
-use tokio::{
-    fs::*,
-    io::{AsyncReadExt, AsyncWriteExt},
-};
-
 use bytes::Bytes;
-use remi_core::{
-    blob::{Blob, DirectoryBlob, FileBlob},
-    builders::{ListBlobsRequest, UploadRequest},
-    StorageService,
-};
 
+#[cfg(not(feature = "async_std"))]
+use tokio::{fs::*, io::*};
+
+#[cfg(feature = "async_std")]
+use async_std::{fs::*, io::*};
+
+use async_trait::async_trait;
 use log::*;
+use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 
 use crate::FilesystemStorageConfig;
 
 #[derive(Debug, Clone)]
-pub struct FilesystemStorageService {
-    config: FilesystemStorageConfig,
+pub struct FilesystemStorageService(FilesystemStorageConfig);
+
+impl FilesystemStorageService {
+    /// Creates a new [`FilesystemStorageService`] service.
+    pub fn new<P: AsRef<Path>>(path: P) -> FilesystemStorageService {
+        FilesystemStorageService(
+            FilesystemStorageConfig::builder()
+                .directory(path.as_ref().to_string_lossy().into_owned())
+                .build()
+                .unwrap(), // .unwrap() is safe here
+        )
+    }
+
+    /// Normalizes a given path and returns a normalized path that matches the following:
+    ///
+    /// - If the path starts with `./`, then it will resolve `./` from the current
+    ///   directory.
+    /// - If the path starts with `~/`, then it will resolve `~/` as the home directory
+    ///   from the [`dirs::home_dir`] function.
+    pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Option<PathBuf> {
+        let path = path.as_ref();
+        if path == self.0.directory() {
+            warn!("[path] argument was the config directory, returning that");
+            return Some(self.0.directory());
+        }
+
+        if path.starts_with("./") {
+            let buf = format!(
+                "{}/{}",
+                self.0.directory().display(),
+                path.strip_prefix("./").unwrap().display()
+            );
+
+            trace!("normalized relative path [{}] to [{buf}]", path.display());
+            return Some(Path::new(&buf).to_path_buf());
+        }
+
+        if path.starts_with("~/") {
+            let home_dir = dirs::home_dir();
+            if home_dir.is_none() {
+                warn!("unable to resolve home dir with path [{}]", path.display());
+                return None;
+            }
+
+            let home_dir = home_dir.unwrap_or("".into());
+            let dir = format!(
+                "{}/{}",
+                home_dir.display(),
+                path.strip_prefix("~/").unwrap().display()
+            );
+
+            trace!("resolved relative path [{}] to [{dir}]", path.display());
+            return Some(Path::new(&dir).to_path_buf());
+        }
+
+        trace!(
+            "unable to normalize [{}], won't be doing anything",
+            path.display()
+        );
+
+        Some(path.to_path_buf())
+    }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl StorageService for FilesystemStorageService {
+    fn name(self) -> &'static str {
+        "remi:fs"
+    }
+
     async fn init(&self) -> Result<()> {
-        let dir = self.config.directory();
+        let dir = self.0.directory();
         info!("checking if directory [{}] exists...", dir.display());
 
         if !dir.exists() {
@@ -71,7 +134,7 @@ impl StorageService for FilesystemStorageService {
         Ok(())
     }
 
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>> {
+    async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
         let path = path.as_ref().to_path_buf();
         let normalized = self.normalize(path);
 
@@ -105,7 +168,7 @@ impl StorageService for FilesystemStorageService {
         Ok(Some(Bytes::from(buf)))
     }
 
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>> {
+    async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>> {
         let path = path.as_ref().to_path_buf();
         let normalized = self.normalize(path);
 
@@ -146,31 +209,15 @@ impl StorageService for FilesystemStorageService {
             return Ok(Some(Blob::Directory(dir_blob)));
         }
 
-        let metadata = normalized.metadata();
-
-        // let last_modified_at = match &metadata {
-        //     Ok(m) => Some(m.modified()?),
-        //     Err(_) => None,
-        // };
-
-        // let created_at = match &metadata {
-        //     Ok(m) => Some(m.modified()?),
-        //     Err(_) => None,
-        // };
+        let _last_modified_at = normalized.metadata()?.modified()?;
+        let _created_at = normalized.metadata()?.created()?;
 
         // should this return a empty byte slice (as it is right now) or what?
         let bytes = self.open(&normalized).await?.map_or(Bytes::new(), |x| x);
-        let is_symlink = match &metadata {
-            Ok(m) => m.is_symlink(),
-            Err(_) => false,
-        };
-
-        let size = match &metadata {
-            Ok(m) => m.len(),
-            Err(_) => 0,
-        };
-
+        let is_symlink = normalized.metadata()?.is_symlink();
+        let size = normalized.metadata()?.size();
         let name = normalized.file_name();
+
         if name.is_none() {
             warn!(
                 "not deferencing path [{}] due to being an invalid file",
@@ -192,9 +239,9 @@ impl StorageService for FilesystemStorageService {
         ))))
     }
 
-    async fn blobs<P: AsRef<Path> + Send>(
+    async fn blobs(
         &self,
-        path: Option<P>,
+        path: Option<impl AsRef<Path> + Send>,
         options: Option<ListBlobsRequest>,
     ) -> Result<Vec<Blob>> {
         let options = match options {
@@ -203,7 +250,7 @@ impl StorageService for FilesystemStorageService {
         };
 
         if path.is_none() {
-            let path = self.config.directory();
+            let path = self.0.directory();
             let prefix = options.prefix().unwrap_or("".into());
             let normalized = self.normalize(path);
             if normalized.is_none() {
@@ -383,7 +430,7 @@ impl StorageService for FilesystemStorageService {
         Ok(blobs)
     }
 
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<()> {
+    async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()> {
         let path = path.as_ref().to_path_buf();
         let normalized = self.normalize(path);
 
@@ -404,7 +451,7 @@ impl StorageService for FilesystemStorageService {
         Ok(())
     }
 
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool> {
+    async fn exists(&self, path: impl AsRef<Path> + Send) -> Result<bool> {
         let path = path.as_ref().to_path_buf();
         let normalized = self.normalize(path);
 
@@ -417,7 +464,7 @@ impl StorageService for FilesystemStorageService {
         Ok(normalized.exists())
     }
 
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<()> {
+    async fn upload(&self, path: impl AsRef<Path> + Send, options: UploadRequest) -> Result<()> {
         let path = path.as_ref().to_path_buf();
         let normalized = self.normalize(path);
 
@@ -457,64 +504,4 @@ impl StorageService for FilesystemStorageService {
     }
 }
 
-impl FilesystemStorageService {
-    /// Creates a new [`FilesystemStorageService`] service.
-    pub fn new<P: AsRef<Path>>(path: P) -> FilesystemStorageService {
-        FilesystemStorageService {
-            config: FilesystemStorageConfig::builder()
-                .directory(path.as_ref().to_string_lossy().into_owned())
-                .build()
-                .unwrap(), // .unwrap() is safe here
-        }
-    }
-
-    /// Normalizes a given path and returns a normalized path that matches the following:
-    ///
-    /// - If the path starts with `./`, then it will resolve `./` from the current
-    ///   directory.
-    /// - If the path starts with `~/`, then it will resolve `~/` as the home directory
-    ///   from the [`dirs::home_dir`] function.
-    pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Option<PathBuf> {
-        let path = path.as_ref();
-        if path == self.config.directory() {
-            warn!("[path] argument was the config directory, returning that");
-            return Some(self.config.directory());
-        }
-
-        if path.starts_with("./") {
-            let buf = format!(
-                "{}/{}",
-                self.config.directory().display(),
-                path.strip_prefix("./").unwrap().display()
-            );
-
-            trace!("normalized relative path [{}] to [{buf}]", path.display());
-            return Some(Path::new(&buf).to_path_buf());
-        }
-
-        if path.starts_with("~/") {
-            let home_dir = dirs::home_dir();
-            if home_dir.is_none() {
-                warn!("unable to resolve home dir with path [{}]", path.display());
-                return None;
-            }
-
-            let home_dir = home_dir.unwrap_or("".into());
-            let dir = format!(
-                "{}/{}",
-                home_dir.display(),
-                path.strip_prefix("~/").unwrap().display()
-            );
-
-            trace!("resolved relative path [{}] to [{dir}]", path.display());
-            return Some(Path::new(&dir).to_path_buf());
-        }
-
-        trace!(
-            "unable to normalize [{}], won't be doing anything",
-            path.display()
-        );
-
-        Some(path.to_path_buf())
-    }
-}
+unsafe impl Send for FilesystemStorageService {}

@@ -29,7 +29,7 @@ edition = "2021"
 # homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_s3"
 
 [features]
-default = ["serde"]
+default = []
 serde = ["dep:serde"]
 
 [dependencies]
@@ -39,7 +39,7 @@ derive_builder = "0.12.0"
 log = "0.4.17"
 mongodb = "2.3.1"
 mongodb-gridfs = "0.2.3"
-remi-core = "0.1.0"
+remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
 serde = { version = "1.0.152", features = ["derive"], optional = true }
 tokio = { version = "1.25.0", features = ["full"] }
 tokio-stream = "0.1.11"

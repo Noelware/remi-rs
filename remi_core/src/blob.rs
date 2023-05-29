@@ -53,6 +53,17 @@ pub struct DirectoryBlob {
 }
 
 impl FileBlob {
+    /// Create a new [`FileBlob`].
+    ///
+    /// ## Arguments
+    /// - `last_modified_at`: Option variant of when this file was last modified at
+    /// - `content_type`: Option variant of the content type of this file.
+    /// - `created_at`: Option variant of when this file was last created at
+    /// - `symlink`: If the file was a symlink, or not. At the moment, it cannot detect the refernence if this is `true`.
+    /// - `service`: The service that created this [`FileBlob`].
+    /// - `data`: [Bytes] structure of the data itself.
+    /// - `name`: File name
+    /// - `size`: Size of this file.
     #[allow(clippy::too_many_arguments)]
     #[allow(dead_code)]
     pub fn new(

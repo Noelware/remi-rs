@@ -19,36 +19,50 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#![doc = include_str!("../README.md")]
+//! # 🐻‍❄️🧶 remi_core
+//! **remi_core** is the base API implementation that is used by the remi_* crates available to you. This should be only
+//! included in your project if you are creating your own implementation of the [`StorageService`] trait.
+//!
+//! ## Example
+//! ```no_run
+//! use emi_core::{StorageService, EmptyConfig};
+//! use async_trait::async_trait;
+//!
+//! struct MyStorageService;
+//!
+//! #[async_trait]
+//! impl StorageService<EmptyConfig> for MyStorageService {
+//!     /* omitted details */
+//! }
+//! ```
 
 use std::{io::Result, path::Path};
 
 pub use async_trait::async_trait;
-use blob::Blob;
-use builders::{ListBlobsRequest, UploadRequest};
 use bytes::Bytes;
 
-#[deprecated(
-    since = "0.2.0",
-    reason = "Use remi_core::Blob instead of remi_core::blob::Blob. Scheduled to be removed in 0.3.0"
-)]
-pub mod blob;
-
-#[deprecated(
-    since = "0.2.0",
-    reason = "Builder APIs will now be in global module (remi_core::ListRequestBuilder) instead of builders module. Scheduled to be removed in 0.3.0"
-)]
-pub mod builders;
+mod blob;
+mod builders;
 
 pub use blob::*;
 pub use builders::*;
+
+/// `Config` is the base trait that implements a configuration reference
+/// for a [`StorageService`], if you need it.
+pub trait Config {}
 
 /// `StorageService` is the base primitive for implementing a storage backend. This is the main trait
 /// you should implement if you're creating your own storage backend with **remi-rs**. Please refer to the
 /// crate documentation for an example on how to implement your own.
 #[async_trait]
-pub trait StorageService {
-    async fn init(&self) -> Result<()>;
+pub trait StorageService: Send {
+    /// The name of this [`StorageService`].
+    fn name(self) -> &'static str;
+
+    /// Initializes this [`StorageService`] if it requires initialization or not.
+    async fn init(&self) -> Result<()> {
+        Ok(())
+    }
 
     /// Opens the file in the given path and returns a Result of the given inner data of the file, if it exists. If the
     /// result was `Ok`, then the inner type will be the [`Bytes`] that the file is contained, or a `Option::None` variant
@@ -56,7 +70,7 @@ pub trait StorageService {
     ///
     /// - the path is a directory
     /// - the path doesn't exist.
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>>;
+    async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>>;
 
     /// Returns the [`Blob`] if the given path exists on the disk or on the cloud storage provider.
     ///
@@ -68,18 +82,38 @@ pub trait StorageService {
     /// #   let service = FilesystemStorageService::new("./.data");
     /// #   service.init().await?;
     /// #
-    /// service.blobs(None);
+    /// service.blob("./path");
+    /// // => Ok(Some(...))
+    /// # }
+    /// ```
+    async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>>;
+
+    /// Returns a vector of blobs based upon a given path or options request.
+    ///
+    /// ```no_run
+    /// # use remi::filesystem::FilesystemStorageService;
+    /// #
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let service = FilesystemStorageService::new("./.data");
+    /// #   service.init().await?;
+    /// #
+    /// service.blobs(None, None);
     /// // => Ok(vec![Blob {}, Blob{}])
     /// # }
     /// ```
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>>;
-    async fn blobs<P: AsRef<Path> + Send>(
+    async fn blobs(
         &self,
-        path: Option<P>,
+        path: Option<impl AsRef<Path> + Send>,
         options: Option<ListBlobsRequest>,
     ) -> Result<Vec<Blob>>;
 
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<()>;
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool>;
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<()>;
+    /// Deletes a given file or directory.
+    async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()>;
+
+    /// Checks if a file exists or not.
+    async fn exists(&self, path: impl AsRef<Path> + Send) -> Result<bool>;
+
+    /// Uploads a file to a path with the given [`UploadRequest`].
+    async fn upload(&self, path: impl AsRef<Path> + Send, options: UploadRequest) -> Result<()>;
 }

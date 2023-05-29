@@ -26,11 +26,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use log::*;
 use mongodb::{bson::doc, Database};
 use mongodb_gridfs::{options::GridFSFindOptions, GridFSBucket, GridFSError};
-use remi_core::{
-    blob::{Blob, FileBlob},
-    builders::{ListBlobsRequest, UploadRequest},
-    StorageService,
-};
+use remi_core::{Blob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 use tokio_stream::StreamExt;
 
 use crate::GridfsStorageConfig;
@@ -58,11 +54,15 @@ impl GridfsStorageService {
 
 #[async_trait]
 impl StorageService for GridfsStorageService {
+    fn name(self) -> &'static str {
+        "remi:gridfs"
+    }
+
     async fn init(&self) -> Result<()> {
         Ok(())
     }
 
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>> {
+    async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
         let path = path.as_ref().to_string_lossy().into_owned();
         info!("opening file in path [{path}]");
 
@@ -99,7 +99,7 @@ impl StorageService for GridfsStorageService {
         Ok(Some(bytes.into()))
     }
 
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>> {
+    async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>> {
         let path = path.as_ref().to_string_lossy().into_owned();
         let bytes = self.open(path.clone()).await?;
         if bytes.is_none() {
@@ -141,9 +141,9 @@ impl StorageService for GridfsStorageService {
         ))))
     }
 
-    async fn blobs<P: AsRef<Path> + Send>(
+    async fn blobs(
         &self,
-        _path: Option<P>,
+        _path: Option<impl AsRef<Path> + Send>,
         _options: Option<ListBlobsRequest>,
     ) -> Result<Vec<Blob>> {
         error!(
@@ -153,7 +153,7 @@ impl StorageService for GridfsStorageService {
         Ok(vec![])
     }
 
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<()> {
+    async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()> {
         let path = path.as_ref().to_string_lossy().into_owned();
         warn!("deleting document in path [{path}]");
 
@@ -188,7 +188,7 @@ impl StorageService for GridfsStorageService {
         }
     }
 
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool> {
+    async fn exists(&self, path: impl AsRef<Path> + Send) -> Result<bool> {
         let path = path.as_ref().to_string_lossy().into_owned();
         match self.open(path).await {
             Ok(Some(_)) => Ok(true),
@@ -197,7 +197,7 @@ impl StorageService for GridfsStorageService {
         }
     }
 
-    async fn upload<P: AsRef<Path> + Send>(&self, _path: P, _options: UploadRequest) -> Result<()> {
+    async fn upload(&self, _path: impl AsRef<Path> + Send, _options: UploadRequest) -> Result<()> {
         warn!("#upload(Path, UploadRequest) is not supported at this time.");
         Ok(())
     }
