@@ -44,3 +44,5 @@ jobs:
 
       - name: Publish!
         run: chmod +x ./scripts/release.sh && ./scripts/release.sh
+        env:
+            CRATES_IO_TOKEN: ${{secrets.CARGO_REGISTRY_TOKEN}}
