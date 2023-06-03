@@ -77,7 +77,7 @@ remi::publish() {
 
         if [ -z "${REMI_DRY_RUN:-}" ]; then
             echo "===> [$crate] Publishing to crates.io!"
-            (cd $ROOT_DIR/dist/${crate} && cargo release --token=${CRATES_IO_TOKEN})
+            (cd $ROOT_DIR/dist/${crate} && cargo publish --token=${CRATES_IO_TOKEN})
         fi
 
         # let crates.io propagate the crate
