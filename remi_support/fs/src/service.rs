@@ -20,21 +20,10 @@
 // SOFTWARE.
 
 use std::{
-    ffi::OsStr,
     io::Result,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
-
-#[cfg(target_family = "unix")]
-use std::os::unix::prelude::*;
-
-#[cfg(target_os = "windows")]
-use std::os::windows::fs::MetadataExt;
-
-#[cfg(not(any(target_family = "unix", target_os = "windows")))]
-compile_error!(
-    "remi_fs doesn't support any target that isn't Windows, macOS, or Linux at the moment."
-);
 
 use bytes::Bytes;
 
@@ -56,12 +45,18 @@ pub struct FilesystemStorageService(FilesystemStorageConfig);
 impl FilesystemStorageService {
     /// Creates a new [`FilesystemStorageService`] service.
     pub fn new<P: AsRef<Path>>(path: P) -> FilesystemStorageService {
-        FilesystemStorageService(
-            FilesystemStorageConfig::builder()
-                .directory(path.as_ref().to_string_lossy().into_owned())
-                .build()
-                .unwrap(), // .unwrap() is safe here
-        )
+        let config = FilesystemStorageConfig::builder()
+            .directory(path.as_ref().to_string_lossy().into_owned())
+            .build()
+            .unwrap(); // .unwrap() is safe here
+
+        FilesystemStorageService(config)
+    }
+
+    /// Initializes a new [`FilesystemStorageService`] with a given [`FilesystemStorageConfig`] object
+    /// as the first parameter.
+    pub fn with_config(config: FilesystemStorageConfig) -> FilesystemStorageService {
+        Self(config)
     }
 
     /// Normalizes a given path and returns a normalized path that matches the following:
@@ -70,29 +65,29 @@ impl FilesystemStorageService {
     ///   directory.
     /// - If the path starts with `~/`, then it will resolve `~/` as the home directory
     ///   from the [`dirs::home_dir`] function.
-    pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Option<PathBuf> {
+    pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Result<Option<PathBuf>> {
         let path = path.as_ref();
         if path == self.0.directory() {
-            warn!("[path] argument was the config directory, returning that");
-            return Some(self.0.directory());
+            warn!("current path specified was the config directory, returning that");
+            return std::fs::canonicalize(self.0.directory()).map(|x| Ok(Some(x)))?;
         }
 
         if path.starts_with("./") {
             let buf = format!(
                 "{}/{}",
-                self.0.directory().display(),
+                self.normalize(self.0.directory())?.unwrap().display(),
                 path.strip_prefix("./").unwrap().display()
             );
 
             trace!("normalized relative path [{}] to [{buf}]", path.display());
-            return Some(Path::new(&buf).to_path_buf());
+            return Ok(Some(Path::new(&buf).to_path_buf()));
         }
 
         if path.starts_with("~/") {
             let home_dir = dirs::home_dir();
             if home_dir.is_none() {
                 warn!("unable to resolve home dir with path [{}]", path.display());
-                return None;
+                return Ok(None);
             }
 
             let home_dir = home_dir.unwrap_or("".into());
@@ -103,7 +98,7 @@ impl FilesystemStorageService {
             );
 
             trace!("resolved relative path [{}] to [{dir}]", path.display());
-            return Some(Path::new(&dir).to_path_buf());
+            return Ok(Some(Path::new(&dir).to_path_buf()));
         }
 
         trace!(
@@ -111,7 +106,7 @@ impl FilesystemStorageService {
             path.display()
         );
 
-        Some(path.to_path_buf())
+        Ok(Some(path.to_path_buf()))
     }
 }
 
@@ -146,7 +141,7 @@ impl StorageService for FilesystemStorageService {
 
     async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
         let path = path.as_ref().to_path_buf();
-        let normalized = self.normalize(path);
+        let normalized = self.normalize(path)?;
 
         // if we couldn't normalize the path, let's not do anything
         if normalized.is_none() {
@@ -180,7 +175,7 @@ impl StorageService for FilesystemStorageService {
 
     async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>> {
         let path = path.as_ref().to_path_buf();
-        let normalized = self.normalize(path);
+        let normalized = self.normalize(path)?;
 
         // if we couldn't normalize the path, let's not do anything
         if normalized.is_none() {
@@ -196,66 +191,76 @@ impl StorageService for FilesystemStorageService {
         }
 
         if normalized.is_dir() {
-            let name = normalized.file_name();
-            if name.is_none() {
-                warn!(
-                    "not deferencing path [{}] due to being an invalid file",
-                    normalized.display()
-                );
+            let created_at = match normalized.metadata()?.created() {
+                Ok(sys) => Some(
+                    sys.duration_since(SystemTime::UNIX_EPOCH)
+                        .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                        .as_millis(),
+                ),
 
-                return Ok(None);
-            }
+                Err(_) => None,
+            };
 
-            let dir_blob = DirectoryBlob::new(
-                None,
+            return Ok(Some(Blob::Directory(DirectoryBlob::new(
+                created_at,
                 "fs".into(),
-                normalized
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned(),
-            );
-
-            return Ok(Some(Blob::Directory(dir_blob)));
+                normalized.as_os_str().to_string_lossy().to_string(),
+            ))));
         }
 
-        // #[cfg(target_family = "unix")]
-        // let _last_modified_at = normalized.metadata()?.modified()?;
+        let metadata = normalized.metadata();
+        let is_symlink = match &metadata {
+            Ok(m) => m.is_symlink(),
+            Err(_) => false,
+        };
 
-        // // last_access_at is a u64, not SystemTime on Windows
-        // #[cfg(target_os = "windows")]
-        // let _last_modified_at = normalized.metadata()?.last_access_at();
+        let size = match &metadata {
+            Ok(m) => m.len(),
+            Err(_) => 0,
+        };
 
-        // #[cfg(target_family = "unix")]
-        // let _created_at = normalized.metadata()?.created()?;
+        let last_modified_at = match &metadata {
+            Ok(m) => Some(
+                m.modified()?
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                    .as_millis(),
+            ),
 
-        // // creation_time is a u64, not SystemTime on Windows
-        // #[cfg(target_os = "windows")]
-        // let _created_at = normalized.metadata()?.creation_time();
+            Err(_) => None,
+        };
+
+        let created_at = match &metadata {
+            Ok(m) => match m.created() {
+                Ok(sys) => Some(
+                    sys.duration_since(SystemTime::UNIX_EPOCH)
+                        .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                        .as_millis(),
+                ),
+
+                Err(_) => None,
+            },
+
+            Err(_) => None,
+        };
 
         // should this return a empty byte slice (as it is right now) or what?
         let bytes = self.open(&normalized).await?.map_or(Bytes::new(), |x| x);
-        let is_symlink = normalized.metadata()?.is_symlink();
-        let size = normalized.metadata()?.size();
-        let name = normalized.file_name();
-
-        if name.is_none() {
-            warn!(
-                "not deferencing path [{}] due to being an invalid file",
-                normalized.display()
-            );
-
-            return Ok(None);
-        }
+        let r_ref = &bytes.as_ref();
+        let content_type = infer::get(r_ref).map(|t| t.mime_type().to_string());
 
         Ok(Some(Blob::File(FileBlob::new(
-            None,
-            None,
-            None,
+            last_modified_at,
+            content_type,
+            created_at,
             is_symlink,
             "fs".into(),
             bytes,
-            name.unwrap().to_string_lossy().into_owned(),
+            normalized
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned(),
             size as usize,
         ))))
     }
@@ -273,7 +278,7 @@ impl StorageService for FilesystemStorageService {
         if path.is_none() {
             let path = self.0.directory();
             let prefix = options.prefix().unwrap_or("".into());
-            let normalized = self.normalize(path);
+            let normalized = self.normalize(path)?;
             if normalized.is_none() {
                 return Ok(vec![]);
             }
@@ -296,9 +301,16 @@ impl StorageService for FilesystemStorageService {
 
             while let Some(entry) = items.next_entry().await? {
                 if entry.path().is_dir() {
-                    //let created_at = entry.metadata().await?.modified();
+                    let created_at = entry
+                        .metadata()
+                        .await?
+                        .created()?
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                        .as_millis();
+
                     let dir_blob = DirectoryBlob::new(
-                        None,
+                        Some(created_at),
                         "fs".into(),
                         entry.file_name().to_string_lossy().into_owned(),
                     );
@@ -307,55 +319,9 @@ impl StorageService for FilesystemStorageService {
                     continue;
                 }
 
-                let path = entry.path();
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if options.is_excluded(name) {
-                    continue;
-                }
-
-                let ext = path.extension().and_then(OsStr::to_str);
-                if let Some(ext) = ext {
-                    if !options.is_ext_allowed(ext) {
-                        continue;
-                    }
-                }
-
-                let metadata = entry.metadata().await;
-
-                // let last_modified_at = match &metadata {
-                //     Ok(m) => Some(m.modified()?),
-                //     Err(_) => None,
-                // };
-
-                // let created_at = match &metadata {
-                //     Ok(m) => Some(m.modified()?),
-                //     Err(_) => None,
-                // };
-
-                // should this return a empty byte slice (as it is right now) or what?
-                let bytes = self.open(&path).await?.map_or(Bytes::new(), |x| x);
-                let is_symlink = match &metadata {
-                    Ok(m) => m.is_symlink(),
-                    Err(_) => false,
-                };
-
-                let size = match &metadata {
-                    Ok(m) => m.len(),
-                    Err(_) => 0,
-                };
-
-                let blob = FileBlob::new(
-                    None,
-                    None,
-                    None,
-                    is_symlink,
-                    "fs".into(),
-                    bytes,
-                    entry.file_name().to_string_lossy().into_owned(),
-                    size as usize,
-                );
-
-                blobs.push(Blob::File(blob));
+                blobs.push(Blob::File(
+                    create_file_blob(self.clone(), &normalized, entry).await?,
+                ));
             }
 
             return Ok(blobs);
@@ -363,7 +329,7 @@ impl StorageService for FilesystemStorageService {
 
         let path = path.unwrap();
         let prefix = options.prefix().unwrap_or("".into());
-        let normalized = self.normalize(path.as_ref());
+        let normalized = self.normalize(path.as_ref())?;
         if normalized.is_none() {
             return Ok(vec![]);
         }
@@ -386,9 +352,16 @@ impl StorageService for FilesystemStorageService {
 
         while let Some(entry) = items.next_entry().await? {
             if entry.path().is_dir() {
-                //let created_at = entry.metadata().await?.modified();
+                let created_at = entry
+                    .metadata()
+                    .await?
+                    .created()?
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                    .as_millis();
+
                 let dir_blob = DirectoryBlob::new(
-                    None,
+                    Some(created_at),
                     "fs".into(),
                     entry.file_name().to_string_lossy().into_owned(),
                 );
@@ -397,55 +370,9 @@ impl StorageService for FilesystemStorageService {
                 continue;
             }
 
-            let path = entry.path();
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if options.is_excluded(name) {
-                continue;
-            }
-
-            let ext = path.extension().and_then(OsStr::to_str);
-            if let Some(ext) = ext {
-                if !options.is_ext_allowed(ext) {
-                    continue;
-                }
-            }
-
-            let metadata = entry.metadata().await;
-
-            // let last_modified_at = match &metadata {
-            //     Ok(m) => Some(m.modified()?),
-            //     Err(_) => None,
-            // };
-
-            // let created_at = match &metadata {
-            //     Ok(m) => Some(m.modified()?),
-            //     Err(_) => None,
-            // };
-
-            // should this return a empty byte slice (as it is right now) or what?
-            let bytes = self.open(&path).await?.map_or(Bytes::new(), |x| x);
-            let is_symlink = match &metadata {
-                Ok(m) => m.is_symlink(),
-                Err(_) => false,
-            };
-
-            let size = match &metadata {
-                Ok(m) => m.len(),
-                Err(_) => 0,
-            };
-
-            let blob = FileBlob::new(
-                None,
-                None,
-                None,
-                is_symlink,
-                "fs".into(),
-                bytes,
-                entry.file_name().to_string_lossy().into_owned(),
-                size as usize,
-            );
-
-            blobs.push(Blob::File(blob));
+            blobs.push(Blob::File(
+                create_file_blob(self.clone(), &normalized, entry).await?,
+            ));
         }
 
         Ok(blobs)
@@ -453,7 +380,7 @@ impl StorageService for FilesystemStorageService {
 
     async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()> {
         let path = path.as_ref().to_path_buf();
-        let normalized = self.normalize(path);
+        let normalized = self.normalize(path)?;
 
         // if we couldn't normalize the path, let's not do anything
         if normalized.is_none() {
@@ -474,7 +401,7 @@ impl StorageService for FilesystemStorageService {
 
     async fn exists(&self, path: impl AsRef<Path> + Send) -> Result<bool> {
         let path = path.as_ref().to_path_buf();
-        let normalized = self.normalize(path);
+        let normalized = self.normalize(path)?;
 
         // if we couldn't normalize the path, let's not do anything
         if normalized.is_none() {
@@ -487,7 +414,7 @@ impl StorageService for FilesystemStorageService {
 
     async fn upload(&self, path: impl AsRef<Path> + Send, options: UploadRequest) -> Result<()> {
         let path = path.as_ref().to_path_buf();
-        let normalized = self.normalize(path);
+        let normalized = self.normalize(path)?;
 
         // if we couldn't normalize the path, let's not do anything
         if normalized.is_none() {
@@ -526,3 +453,61 @@ impl StorageService for FilesystemStorageService {
 }
 
 unsafe impl Send for FilesystemStorageService {}
+
+pub(crate) async fn create_file_blob(
+    this: FilesystemStorageService,
+    path: &Path,
+    entry: DirEntry,
+) -> Result<FileBlob> {
+    let metadata = entry.metadata().await;
+    let is_symlink = match &metadata {
+        Ok(m) => m.is_symlink(),
+        Err(_) => false,
+    };
+
+    let size = match &metadata {
+        Ok(m) => m.len(),
+        Err(_) => 0,
+    };
+
+    let last_modified_at = match &metadata {
+        Ok(m) => Some(
+            m.modified()?
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                .as_millis(),
+        ),
+
+        Err(_) => None,
+    };
+
+    let created_at = match &metadata {
+        Ok(m) => match m.created() {
+            Ok(sys) => Some(
+                sys.duration_since(SystemTime::UNIX_EPOCH)
+                    .map_err(|_| std::io::Error::new(ErrorKind::Other, "clock went backwards"))?
+                    .as_millis(),
+            ),
+
+            Err(_) => None,
+        },
+
+        Err(_) => None,
+    };
+
+    // should this return a empty byte slice (as it is right now) or what?
+    let bytes = this.open(path).await?.map_or(Bytes::new(), |x| x);
+    let r_ref = &bytes.as_ref();
+    let content_type = infer::get(r_ref).map(|t| t.mime_type().to_string());
+
+    Ok(FileBlob::new(
+        last_modified_at,
+        content_type,
+        created_at,
+        is_symlink,
+        "fs".into(),
+        bytes,
+        entry.file_name().to_string_lossy().into_owned(),
+        size as usize,
+    ))
+}

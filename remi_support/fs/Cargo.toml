@@ -40,7 +40,8 @@ bytes = "1.3.0"
 derive_builder = "0.12.0"
 dirs = "4.0.0"
 futures = "0.3.25"
+infer = { version = "0.13.0", default-features = false }
 log = "0.4.17"
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
 serde = { version = "1.0.152", features = ["derive"], optional = true }
-tokio = { version = "1.28.2", features = ["fs"] }
+tokio = { version = "1.28.2", features = ["fs", "io-util"] }

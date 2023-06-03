@@ -47,10 +47,6 @@ mod builders;
 pub use blob::*;
 pub use builders::*;
 
-/// `Config` is the base trait that implements a configuration reference
-/// for a [`StorageService`], if you need it.
-pub trait Config {}
-
 /// `StorageService` is the base primitive for implementing a storage backend. This is the main trait
 /// you should implement if you're creating your own storage backend with **remi-rs**. Please refer to the
 /// crate documentation for an example on how to implement your own.

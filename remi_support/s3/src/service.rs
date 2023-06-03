@@ -191,19 +191,20 @@ impl StorageService for S3StorageService {
             Ok(obj) => {
                 let mut bytes = BytesMut::new();
                 let content_type = obj.content_type().map(|x| x.to_owned());
-                let stream = obj.body;
+                let last_modified_at = obj
+                    .last_modified()
+                    .map(|dt| dt.to_millis().expect("cant convert into millis") as u128);
 
-                let mut reader = BufReader::new(stream.into_async_read());
+                let stream = obj.body.into_async_read();
+                let mut reader = BufReader::new(stream);
                 reader
                     .read_exact(&mut bytes)
                     .await
                     .map_err(|x| to_io_error!(x))?;
 
-                // let last_modified_at = obj.last_modified();
-
                 let bytes: Bytes = bytes.into();
                 Ok(Some(Blob::File(FileBlob::new(
-                    None,
+                    last_modified_at,
                     content_type,
                     None,
                     false,

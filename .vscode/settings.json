@@ -9,6 +9,8 @@
         ".*-version": "plaintext"
     },
     "rust-analyzer.linkedProjects": [
+        "./remi_support/fs/Cargo.toml",
+        "./remi_support/fs/Cargo.toml",
         "./remi_support/fs/Cargo.toml"
     ]
 }

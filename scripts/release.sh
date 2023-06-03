@@ -43,23 +43,43 @@ if ! [ -f "$ROOT_DIR/.remi-version" ]; then
 fi
 
 version=$(cat "$ROOT_DIR/.remi-version")
+crates=(
+    "remi_core"
+    "remi_support/fs"
+    "remi_support/s3"
+    "remi_support/gridfs"
+    "remi"
+)
 
 if [ -z "${CRATES_IO_TOKEN}" ]; then
     echo "[remi::scripts] Missing \`CRATES_IO_TOKEN\` environment variable"
+    exit 1
 fi
 
+! [ -d "$ROOT_DIR/dist" ] && mkdir $ROOT_DIR/dist
+! [ -d "$ROOT_DIR/dist/remi_support" ] && mkdir $ROOT_DIR/dist/remi_support
+
 remi::publish() {
-    # if [ "${crates[@]}" -eq 0 ]; then
-    #     echo "[remi::scripts] All crates will be updated to $version"
-    # fi
+    echo "Now publishing crates with $version!"
 
-    # if [ "${crates[@]}" -gt 0 ]; then
-    #     echo "[remi::scripts] Only crates $(IFS=', ' "${crates[@]}") will be published."
-    # fi
+    for crate in "${crates[@]}"; do
+        echo "===> [$crate] Setting up publishing environment!"
+        ! [ -d "$ROOT_DIR/dist/${crate}" ] && cp -R "$ROOT_DIR/${crate}" "$ROOT_DIR/dist/${crate}"
+
+        sed -i "s#version = \"0.0.0-devel.0\"#version = \"$version\"#" $ROOT_DIR/dist/${crate}/Cargo.toml
+        echo "===> [$crate] Running \`cargo build\`..."
+
+        (cd $ROOT_DIR/dist/${crate} && cargo build)
+        if [ "$?" != "0" ]; then
+            echo "===> [$crate] Crate has failed to be built, exiting..."
+            exit 1
+        fi
+
+        if [ -z "${REMI_DRY_RUN:-}" ]; then
+            echo "===> [$crate] Publishing to crates.io!"
+            (cd $ROOT_DIR/dist/${crate} && cargo build --token=${CRATES_IO_TOKEN})
+        fi
+    done
 }
 
-remi::crate::publish() {
-    local crate="$1"
-}
-
-remi::publish $@
+remi::publish

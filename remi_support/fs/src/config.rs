@@ -22,7 +22,6 @@
 use std::path::{Path, PathBuf};
 
 use derive_builder::Builder;
-use remi_core::Config;
 
 #[derive(Debug, Clone, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -41,5 +40,3 @@ impl FilesystemStorageConfig {
         Path::new(&self.directory).to_path_buf()
     }
 }
-
-impl Config for FilesystemStorageConfig {}

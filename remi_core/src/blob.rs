@@ -34,9 +34,9 @@ pub enum Blob {
 /// Represents a file that was located
 #[derive(Debug, Clone)]
 pub struct FileBlob {
-    last_modified_at: Option<String>,
+    last_modified_at: Option<u128>,
     content_type: Option<String>,
-    created_at: Option<String>,
+    created_at: Option<u128>,
     flags: usize,
     data: Bytes,
     name: String,
@@ -47,7 +47,7 @@ pub struct FileBlob {
 /// Represents a directory that was located
 #[derive(Debug, Clone)]
 pub struct DirectoryBlob {
-    created_at: Option<String>,
+    created_at: Option<u128>,
     name: String,
     path: String,
 }
@@ -67,9 +67,9 @@ impl FileBlob {
     #[allow(clippy::too_many_arguments)]
     #[allow(dead_code)]
     pub fn new(
-        last_modified_at: Option<String>,
+        last_modified_at: Option<u128>,
         content_type: Option<String>,
-        created_at: Option<String>,
+        created_at: Option<u128>,
         symlink: bool,
         service: String,
         data: Bytes,
@@ -101,8 +101,8 @@ impl FileBlob {
 
     /// Returns the last modified data of this file. This can be a `Option::None` variant if this
     /// blob is a directory or the storage backend doesn't keep track of the last modification state.
-    pub fn last_modified_at(&self) -> Option<&String> {
-        self.last_modified_at.as_ref()
+    pub fn last_modified_at(&self) -> Option<u128> {
+        self.last_modified_at
     }
 
     /// Returns the content type of this file that can be applicable with the `Content-Type` HTTP header. This
@@ -112,9 +112,9 @@ impl FileBlob {
     }
 
     /// Returns the file creation date for this file. This can be a `Option::None` variant if this
-    /// blob is a directory or the storage backend doesn't keep track of the last modification state.
-    pub fn created_at(&self) -> Option<&String> {
-        self.created_at.as_ref()
+    /// blob is a directory or the storage backend doesn't keep track of when this file was created.
+    pub fn created_at(&self) -> Option<u128> {
+        self.created_at
     }
 
     /// Returns the file content of this [`FileBlob`].
@@ -140,7 +140,7 @@ impl FileBlob {
 
 impl DirectoryBlob {
     #[allow(dead_code)]
-    pub fn new(created_at: Option<String>, service: String, name: String) -> DirectoryBlob {
+    pub fn new(created_at: Option<u128>, service: String, name: String) -> DirectoryBlob {
         DirectoryBlob {
             created_at,
             name: name.clone(),
@@ -150,8 +150,8 @@ impl DirectoryBlob {
 
     /// Returns the creation date for this directory. This can be a `Option::None` variant if this
     /// blob is a directory or the storage backend doesn't keep track of the last modification state.
-    pub fn created_at(&self) -> Option<&String> {
-        self.created_at.as_ref()
+    pub fn created_at(&self) -> Option<u128> {
+        self.created_at
     }
 
     /// Returns this [`DirectoryBlob`] name.

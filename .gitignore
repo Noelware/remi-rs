@@ -511,4 +511,4 @@ FodyWeavers.xsd
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 
-# End of https://www.toptal.com/developers/gitignore/api/Rust,VisualStudio,VisualStudioCode,JetBrains+All
+dist/
