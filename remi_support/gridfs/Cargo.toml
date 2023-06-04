@@ -42,4 +42,4 @@ mongodb-gridfs = "0.2.3"
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
 serde = { version = "1.0.152", features = ["derive"], optional = true }
 tokio = { version = "1.25.0", features = ["full"] }
-tokio-stream = "0.1.11"
+tokio-stream = "0.1.14"
