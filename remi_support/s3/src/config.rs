@@ -70,7 +70,7 @@ pub struct S3StorageConfig {
 mod region {
     use std::borrow::Cow;
 
-    use aws_sdk_s3::Region;
+    use aws_sdk_s3::config::Region;
     use serde::*;
 
     pub fn serialize<S: Serializer>(
@@ -94,7 +94,7 @@ mod region {
 
 #[cfg(feature = "serde")]
 mod bucket_acl {
-    use aws_sdk_s3::model::BucketCannedAcl;
+    use aws_sdk_s3::types::BucketCannedAcl;
     use serde::*;
 
     pub fn serialize<S: Serializer>(
@@ -118,7 +118,7 @@ mod bucket_acl {
 
 #[cfg(feature = "serde")]
 mod object_acl {
-    use aws_sdk_s3::model::ObjectCannedAcl;
+    use aws_sdk_s3::types::ObjectCannedAcl;
     use serde::*;
 
     pub fn serialize<S: Serializer>(
