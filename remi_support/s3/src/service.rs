@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use std::{io::Result, path::Path};
+use std::{borrow::Cow, io::Result, path::Path};
 
 use crate::config::S3StorageConfig;
 use async_trait::async_trait;
@@ -58,7 +58,9 @@ impl S3StorageService {
         )));
 
         sdk_config.set_endpoint_url(Some(config.endpoint()));
-        sdk_config.set_app_name(Some(AppName::new("remi-rs").unwrap()));
+        sdk_config.set_app_name(Some(
+            AppName::new(Cow::Owned(config.app_name().unwrap_or("remi-rs".into()))).unwrap(),
+        ));
 
         if config.enforce_path_access_style() {
             sdk_config.set_force_path_style(Some(true));

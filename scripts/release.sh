@@ -79,9 +79,6 @@ remi::publish() {
             echo "===> [$crate] Publishing to crates.io!"
             (cd $ROOT_DIR/dist/${crate} && cargo publish --token=${CRATES_IO_TOKEN})
         fi
-
-        # let crates.io propagate the crate
-        sleep 5
     done
 }
 

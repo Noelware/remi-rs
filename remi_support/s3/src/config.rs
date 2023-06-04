@@ -29,7 +29,10 @@ use derive_builder::Builder;
 #[derive(Debug, Clone, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct S3StorageConfig {
+    #[cfg_attr(feature = "serde", serde(default))]
     enable_signer_v4_requests: bool,
+
+    #[cfg_attr(feature = "serde", serde(default))]
     enforce_path_access_style: bool,
 
     #[cfg_attr(
@@ -45,7 +48,14 @@ pub struct S3StorageConfig {
     default_bucket_acl: Option<BucketCannedAcl>,
     secret_access_key: String,
     access_key_id: String,
+
+    #[cfg_attr(feature = "serde", serde(default))]
+    app_name: Option<String>,
+
+    #[cfg_attr(feature = "serde", serde(default))]
     endpoint: Option<String>,
+
+    #[cfg_attr(feature = "serde", serde(default))]
     prefix: Option<String>,
 
     #[cfg_attr(
@@ -175,6 +185,12 @@ impl S3StorageConfig {
     /// Returns the access key ID when authenticating with AWS S3.
     pub fn access_key_id(&self) -> String {
         self.access_key_id.clone()
+    }
+
+    /// Returns a reference of the application name for the AWS SDK to use, it will
+    /// use `remi_rs` as the default one.
+    pub fn app_name(&self) -> Option<String> {
+        self.app_name.clone()
     }
 
     /// Returns the S3 endpoint to connect to. If this is a `Option::None` variant, it will default
