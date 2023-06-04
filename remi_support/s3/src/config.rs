@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 use aws_sdk_s3::{
-    model::{BucketCannedAcl, ObjectCannedAcl},
-    Region,
+    config::Region,
+    types::{BucketCannedAcl, ObjectCannedAcl},
 };
 
 use derive_builder::Builder;

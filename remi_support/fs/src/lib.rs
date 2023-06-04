@@ -40,9 +40,9 @@
 //!
 //! ```toml
 //! [dependencies]
-//! bytes = "1"
+//! bytes = "1.4"
 //! remi = { version = "0.2" }
-//! tokio = { version = "1", features = ["fs"] }
+//! tokio = { version = "1.28", features = ["fs", "io_util"] }
 //! ```
 //!
 //! ```no_run

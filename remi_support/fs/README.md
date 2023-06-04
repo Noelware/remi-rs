@@ -11,9 +11,9 @@ Enables the use of **serde** for the `FilesystemStorageConfig` struct.
 ## Usage
 ```toml
 [dependencies]
-bytes = "1.3.0"
+bytes = "1.4"
 remi = { version = "0.1" }
-tokio = { version = "1.21", features = ["fs"] }
+tokio = { version = "1.28", features = ["fs", "io_util"] }
 ```
 
 ```rust

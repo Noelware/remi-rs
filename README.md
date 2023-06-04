@@ -46,7 +46,7 @@ This example assumes you're using Tokio as the async runtime.
 
 ```toml
 [dependencies]
-tokio = "1.21"
+tokio = "1.28"
 remi  = "0.1"
 ```
 

@@ -25,7 +25,7 @@ use crate::config::S3StorageConfig;
 use async_trait::async_trait;
 use aws_config::AppName;
 use aws_credential_types::provider::SharedCredentialsProvider;
-use aws_sdk_s3::{model::Object, types::ByteStream, Client, Config, Credentials};
+use aws_sdk_s3::{config::Credentials, primitives::ByteStream, types::Object, Client, Config};
 use bytes::{Bytes, BytesMut};
 use log::*;
 use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};

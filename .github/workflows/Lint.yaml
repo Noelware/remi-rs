@@ -26,6 +26,7 @@ on:
         types: [opened, synchronize]
         branches:
             - 'issue/gh-**'
+            - 'renovate/**'
             - 'feat/**'
 
         paths-ignore:
