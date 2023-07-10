@@ -58,10 +58,6 @@ impl StorageService for GridfsStorageService {
         "remi:gridfs"
     }
 
-    async fn init(&self) -> Result<()> {
-        Ok(())
-    }
-
     async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
         let path = path.as_ref().to_string_lossy().into_owned();
         info!("opening file in path [{path}]");

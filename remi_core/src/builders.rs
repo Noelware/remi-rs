@@ -20,74 +20,154 @@
 // SOFTWARE.
 
 use bytes::Bytes;
-use derive_builder::Builder;
 
-/// Represents the request options for the `blobs` method in [`StorageService`]
-#[derive(Debug, Default, Clone, Builder)]
+/// Represents the request options for querying blobs from a storage
+/// service.
+#[derive(Debug, Clone, Default)]
 pub struct ListBlobsRequest {
-    extensions: Vec<String>,
-    excluded: Vec<String>,
-    prefix: Option<String>,
+    /// Whether if the response should include directory blobs or not. If this set
+    /// to false, then it will only include file blobs in the given directory
+    /// where the request is being processed.
+    pub include_dirs: bool,
+
+    /// A list of extensions to filter for. By default, this will
+    /// include all file extensions if no entries exist.
+    pub extensions: Vec<String>,
+
+    /// List of file names to exclude from the returned entry. This can
+    /// exclude directories with the `dir:` prefix.
+    pub excluded: Vec<String>,
+
+    /// Optional prefix to set when querying for blobs.
+    pub prefix: Option<String>,
 }
 
 impl ListBlobsRequest {
-    /// Creates a new [`ListBlobsRequestBuilder`].
-    pub fn builder() -> ListBlobsRequestBuilder {
-        ListBlobsRequestBuilder::default()
+    /// Appends a slice of strings to exclude from.
+    pub fn exclude(&mut self, items: &[&str]) -> &mut Self {
+        self.excluded
+            .append(&mut items.iter().map(|val| val.to_string()).collect::<Vec<_>>());
+
+        self
     }
 
-    pub fn excluded(&self) -> Vec<String> {
-        self.excluded.clone()
+    /// Sets a prefix to this request.
+    pub fn prefix(&mut self, prefix: Option<String>) -> &mut Self {
+        self.prefix = prefix;
+        self
     }
 
-    pub fn extensions_allowed(&self) -> Vec<String> {
-        self.extensions.clone()
+    /// Appends a list of extensions that can be use to filter files from
+    /// in the given directory that items were found.
+    pub fn extensions(&mut self, exts: &[&str]) -> &mut Self {
+        self.extensions.append(
+            &mut exts
+                .iter()
+                .filter(|val| val.starts_with('.'))
+                .map(|val| val.to_string())
+                .collect::<Vec<_>>(),
+        );
+
+        self
     }
 
-    pub fn prefix(&self) -> Option<String> {
-        self.prefix.clone()
+    /// Whether if the response should include directory blobs or not. If this set
+    /// to false, then it will only include file blobs in the given directory
+    /// where the request is being processed.
+    pub fn include_dirs(&mut self, yes: bool) -> &mut Self {
+        self.include_dirs = yes;
+        self
     }
 
-    /// Checks if the given string is excluded or not.
-    pub fn is_excluded(&self, p: String) -> bool {
-        if self.excluded().is_empty() {
-            return false;
+    /// Checks if the given item is excluded or not.
+    ///
+    /// ## Example
+    /// ```
+    /// # use remi_core::ListBlobsRequest;
+    /// #
+    /// let mut req = ListBlobsRequest::default();
+    /// let _ = req.exclude(&["hello.txt"]);
+    ///
+    /// assert!(!req.is_excluded("world.txt"));
+    /// assert!(req.is_excluded("hello.txt"));
+    /// ```
+    pub fn is_excluded<I: AsRef<str>>(&self, item: I) -> bool {
+        self.excluded.contains(&item.as_ref().to_string())
+    }
+
+    /// Checks if an extension is allowed. If the configured extensions
+    /// to return is empty, then this will always return `true`. Otherwise,
+    /// it will try to check if it exists or not.
+    ///
+    /// ## Example
+    /// ```
+    /// # use remi_core::ListBlobsRequest;
+    /// #
+    /// let mut req = ListBlobsRequest::default();
+    /// let _ = req.extensions(&[".txt"]);
+    ///
+    /// assert!(!req.is_ext_allowed(".json"));
+    /// assert!(req.is_ext_allowed(".txt"));
+    ///
+    /// let req = ListBlobsRequest::default();
+    /// assert!(req.is_ext_allowed(".json"));
+    /// ```
+    pub fn is_ext_allowed<I: AsRef<str>>(&self, ext: I) -> bool {
+        if self.extensions.is_empty() {
+            return true;
         }
 
-        self.excluded.contains(&p)
-    }
-
-    /// Checks if the `ext` is allowed or not.
-    pub fn is_ext_allowed(&self, ext: &str) -> bool {
-        if self.extensions_allowed().is_empty() {
-            return false;
-        }
-
-        self.extensions.contains(&ext.to_string())
+        self.extensions.contains(&ext.as_ref().to_string())
     }
 }
 
-/// Represents a request object for the [`StorageService::upload`] method. It contains the
-/// content type and the inner data as `content` itself.
-#[derive(Debug, Builder)]
+/// Represents a request object that allows users who interact with the storage service
+/// API to create objects with a [`Bytes`] container.
+#[derive(Debug, Clone, Default)]
 pub struct UploadRequest {
-    content_type: String,
-    content: Bytes,
+    /// Returns the content-type to use. By default, the storage service
+    /// you use will try to determine it automatically if it can.
+    pub content_type: Option<String>,
+
+    /// [`Bytes`] container of the given data to send to the service
+    /// or to write to local disk (with `remi_fs`).
+    pub data: Bytes,
 }
 
 impl UploadRequest {
-    /// Creates a new [`UploadRequestBuilder`].
-    pub fn builder() -> UploadRequestBuilder {
-        UploadRequestBuilder::default()
+    /// Overrides the content type when the request is sent.
+    ///
+    /// ## Example
+    /// ```
+    /// # use remi_core::UploadRequest;
+    /// #
+    /// let mut req = UploadRequest::default();
+    /// assert!(req.content_type.is_none());
+    ///
+    /// let _ = req.content_type(Some("application/json; charset=utf-8".into()));
+    /// assert!(req.content_type.is_some());
+    /// assert_eq!(req.content_type.unwrap().as_str(), "application/json; charset=utf-8");
+    /// ```
+    pub fn content_type(&mut self, content_type: Option<String>) -> &mut Self {
+        self.content_type = content_type;
+        self
     }
 
-    /// Returns the content type of this file
-    pub fn content_type(&self) -> String {
-        self.content_type.clone()
-    }
-
-    /// Returns the inner [`Bytes`] for this file.
-    pub fn data(&self) -> Bytes {
-        self.content.clone()
+    /// Overrides the data container for this request to a new container provided.
+    ///
+    /// ## Example
+    /// ```
+    /// # use remi_core::UploadRequest;
+    /// # use bytes::Bytes;
+    /// #
+    /// let mut req = UploadRequest::default();
+    /// assert!(req.data.is_empty());
+    ///
+    /// let _ = req.data(Bytes::from_static(&[0x12, 0x13]));
+    /// assert!(!req.data.is_empty());
+    /// ```
+    pub fn data(&mut self, container: Bytes) -> &mut Self {
+        self.data = container;
+        self
     }
 }

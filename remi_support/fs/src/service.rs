@@ -290,7 +290,7 @@ impl StorageService for FilesystemStorageService {
 
         if path.is_none() {
             let path = self.config.directory();
-            let prefix = options.prefix().unwrap_or("".into());
+            let prefix = options.prefix.unwrap_or("".into());
             let normalized = self.normalize(path)?;
             if normalized.is_none() {
                 return Ok(vec![]);
@@ -313,7 +313,7 @@ impl StorageService for FilesystemStorageService {
             let mut blobs: Vec<Blob> = Vec::new();
 
             while let Some(entry) = items.next_entry().await? {
-                if entry.path().is_dir() {
+                if entry.path().is_dir() && options.include_dirs {
                     let created_at = entry
                         .metadata()
                         .await?
@@ -341,7 +341,7 @@ impl StorageService for FilesystemStorageService {
         }
 
         let path = path.unwrap();
-        let prefix = options.prefix().unwrap_or("".into());
+        let prefix = options.prefix.unwrap_or("".into());
         let normalized = self.normalize(path.as_ref())?;
         if normalized.is_none() {
             return Ok(vec![]);
@@ -364,7 +364,7 @@ impl StorageService for FilesystemStorageService {
         let mut blobs: Vec<Blob> = Vec::new();
 
         while let Some(entry) = items.next_entry().await? {
-            if entry.path().is_dir() {
+            if entry.path().is_dir() && options.include_dirs {
                 let created_at = entry
                     .metadata()
                     .await?
@@ -456,8 +456,7 @@ impl StorageService for FilesystemStorageService {
             .open(normalized.clone())
             .await?;
 
-        let data = options.data();
-        let buf = data.as_ref();
+        let buf = options.data.as_ref();
         file.write_all(buf).await?;
         file.flush().await?; // flush the changes that reaches to the file.
 
