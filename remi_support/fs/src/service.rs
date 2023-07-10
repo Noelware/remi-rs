@@ -22,6 +22,7 @@
 use std::{
     io::Result,
     path::{Path, PathBuf},
+    sync::Arc,
     time::SystemTime,
 };
 
@@ -33,30 +34,42 @@ use tokio::{fs::*, io::*};
 #[cfg(feature = "async_std")]
 use async_std::{fs::*, io::*};
 
+use crate::{
+    content_type::{ContentTypeResolver, DefaultContentTypeResolver},
+    FilesystemStorageConfig,
+};
 use async_trait::async_trait;
 use log::*;
 use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 
-use crate::FilesystemStorageConfig;
-
 #[derive(Debug, Clone)]
-pub struct FilesystemStorageService(FilesystemStorageConfig);
+pub struct FilesystemStorageService {
+    config: FilesystemStorageConfig,
+    resolver: Arc<Box<dyn ContentTypeResolver>>,
+}
 
 impl FilesystemStorageService {
     /// Creates a new [`FilesystemStorageService`] service.
     pub fn new<P: AsRef<Path>>(path: P) -> FilesystemStorageService {
-        let config = FilesystemStorageConfig::builder()
-            .directory(path.as_ref().to_string_lossy().into_owned())
-            .build()
-            .unwrap(); // .unwrap() is safe here
-
-        FilesystemStorageService(config)
+        let config = FilesystemStorageConfig::new(path.as_ref().to_string_lossy().into_owned());
+        FilesystemStorageService {
+            config,
+            resolver: Arc::new(Box::new(DefaultContentTypeResolver)),
+        }
     }
 
     /// Initializes a new [`FilesystemStorageService`] with a given [`FilesystemStorageConfig`] object
     /// as the first parameter.
     pub fn with_config(config: FilesystemStorageConfig) -> FilesystemStorageService {
-        Self(config)
+        FilesystemStorageService {
+            config,
+            resolver: Arc::new(Box::new(DefaultContentTypeResolver)),
+        }
+    }
+
+    /// Sets the content type resolver to something else, if you wish.
+    pub fn set_content_type_resolver<R: ContentTypeResolver + 'static>(&mut self, resolver: R) {
+        self.resolver = Arc::new(Box::new(resolver));
     }
 
     /// Normalizes a given path and returns a normalized path that matches the following:
@@ -67,15 +80,15 @@ impl FilesystemStorageService {
     ///   from the [`dirs::home_dir`] function.
     pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Result<Option<PathBuf>> {
         let path = path.as_ref();
-        if path == self.0.directory() {
+        if path == self.config.directory() {
             warn!("current path specified was the config directory, returning that");
-            return std::fs::canonicalize(self.0.directory()).map(|x| Ok(Some(x)))?;
+            return std::fs::canonicalize(self.config.directory()).map(|x| Ok(Some(x)))?;
         }
 
         if path.starts_with("./") {
             let buf = format!(
                 "{}/{}",
-                self.normalize(self.0.directory())?.unwrap().display(),
+                self.normalize(self.config.directory())?.unwrap().display(),
                 path.strip_prefix("./").unwrap().display()
             );
 
@@ -117,7 +130,7 @@ impl StorageService for FilesystemStorageService {
     }
 
     async fn init(&self) -> Result<()> {
-        let dir = self.0.directory();
+        let dir = self.config.directory();
         info!("checking if directory [{}] exists...", dir.display());
 
         if !dir.exists() {
@@ -247,11 +260,11 @@ impl StorageService for FilesystemStorageService {
         // should this return a empty byte slice (as it is right now) or what?
         let bytes = self.open(&normalized).await?.map_or(Bytes::new(), |x| x);
         let r_ref = &bytes.as_ref();
-        let content_type = infer::get(r_ref).map(|t| t.mime_type().to_string());
+        let content_type = self.resolver.resolve(r_ref);
 
         Ok(Some(Blob::File(FileBlob::new(
             last_modified_at,
-            content_type,
+            Some(content_type),
             created_at,
             is_symlink,
             "fs".into(),
@@ -276,7 +289,7 @@ impl StorageService for FilesystemStorageService {
         };
 
         if path.is_none() {
-            let path = self.0.directory();
+            let path = self.config.directory();
             let prefix = options.prefix().unwrap_or("".into());
             let normalized = self.normalize(path)?;
             if normalized.is_none() {
@@ -498,11 +511,11 @@ pub(crate) async fn create_file_blob(
     // should this return a empty byte slice (as it is right now) or what?
     let bytes = this.open(path).await?.map_or(Bytes::new(), |x| x);
     let r_ref = &bytes.as_ref();
-    let content_type = infer::get(r_ref).map(|t| t.mime_type().to_string());
+    let content_type = this.resolver.resolve(r_ref);
 
     Ok(FileBlob::new(
         last_modified_at,
-        content_type,
+        Some(content_type),
         created_at,
         is_symlink,
         "fs".into(),

@@ -21,18 +21,17 @@
 
 use std::path::{Path, PathBuf};
 
-use derive_builder::Builder;
-
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct FilesystemStorageConfig {
     directory: String,
 }
 
 impl FilesystemStorageConfig {
-    /// Creates a new [`FilesystemStorageConfigBuilder`].
-    pub fn builder() -> FilesystemStorageConfigBuilder {
-        FilesystemStorageConfigBuilder::default()
+    /// Creates a new [`FilesystemStorageConfig`] object
+    /// with the directory to run in.
+    pub fn new(directory: String) -> FilesystemStorageConfig {
+        FilesystemStorageConfig { directory }
     }
 
     /// Returns the directory that was configured as a [`PathBuf`]

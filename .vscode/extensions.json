@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "me-dutour-mathieu.vscode-github-actions",
+        "tamasfe.even-better-toml",
+        "rust-lang.rust-analyzer",
+        "redhat.vscode-yaml"
+    ]
+}

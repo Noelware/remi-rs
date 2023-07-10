@@ -75,6 +75,7 @@
 //! ```
 
 mod config;
+mod content_type;
 mod service;
 
 pub use crate::config::FilesystemStorageConfig;

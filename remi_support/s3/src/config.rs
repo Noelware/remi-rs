@@ -23,7 +23,6 @@ use aws_sdk_s3::{
     config::Region,
     types::{BucketCannedAcl, ObjectCannedAcl},
 };
-
 use derive_builder::Builder;
 
 #[derive(Debug, Clone, Builder)]

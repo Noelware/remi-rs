@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
 # Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
 #
@@ -19,31 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-[package]
-name = "remi-fs"
-description = "🐻‍❄️🧶 Local filesystem implementation for remi-rs"
-version = "0.0.0-devel.0"
-repository = "https://github.com/Noelware/remi-rs/tree/master/support/remi_fs"
-license = "MIT"
-edition = "2021"
-# homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_fs"
-
-[features]
-async-std = ["dep:async-std"]
-default = ["file-format"]
-file-format = ["dep:infer", "dep:file-format"]
-serde = ["dep:serde"]
-
-[dependencies]
-async-std = { version = "1.12.0", optional = true }
-async-trait = "0.1.68"
-bytes = "1.4.0"
-derive_builder = "0.12.0"
-dirs = "5.0.1"
-file-format = { version = "0.17.3", optional = true }
-futures = "0.3.28"
-infer = { version = "0.13.0", default-features = false, optional = true }
-log = "0.4.18"
-remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
-serde = { version = "1.0.163", features = ["derive"], optional = true }
-tokio = { version = "1.28.2", features = ["fs", "io-util"] }
+if ! command -v cargo >/dev/null; then
+    /tmp/rustup-init -y --profile minimal --default-toolchain "${RUST_VERSION}"
+    rustup component add clippy rustfmt
+fi
