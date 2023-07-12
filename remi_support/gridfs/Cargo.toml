@@ -36,7 +36,7 @@ serde = ["dep:serde"]
 async-trait = "0.1.71"
 bytes = "1.4.0"
 derive_builder = "0.12.0"
-log = "0.4.18"
+log = "0.4.19"
 mongodb = "2.3.1"
 mongodb-gridfs = "0.2.5"
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
