@@ -46,4 +46,4 @@ infer = { version = "0.15.0", default-features = false, optional = true }
 log = "0.4.19"
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
 serde = { version = "1.0.171", features = ["derive"], optional = true }
-tokio = { version = "1.28.2", features = ["fs", "io-util"] }
+tokio = { version = "1.29.1", features = ["fs", "io-util"] }
