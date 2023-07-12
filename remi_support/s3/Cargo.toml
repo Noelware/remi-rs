@@ -41,5 +41,5 @@ bytes = "1.4.0"
 derive_builder = "0.12.0"
 log = "0.4.19"
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
-serde = { version = "1.0.163", features = ["derive"], optional = true }
+serde = { version = "1.0.171", features = ["derive"], optional = true }
 tokio = { version = "1.28.2", features = ["full"] }
