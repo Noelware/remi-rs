@@ -23,15 +23,17 @@ use bytes::Bytes;
 
 const SYMLINK_BIT: usize = 1 << 1;
 
-/// Represents metadata about a file or directory. As this is a enum, you will need to determine if
-/// this blob is a directory or file blob.
+/// Represents a representation of a file or directory from any storage service.
 #[derive(Debug, Clone)]
 pub enum Blob {
+    /// File.
     File(FileBlob),
+
+    /// Directory.
     Directory(DirectoryBlob),
 }
 
-/// Represents a file that was located
+/// Representation of a [`Blob`] that is a regular file.
 #[derive(Debug, Clone)]
 pub struct FileBlob {
     last_modified_at: Option<u128>,
@@ -117,14 +119,14 @@ impl FileBlob {
         self.created_at
     }
 
-    /// Returns the file content of this [`FileBlob`].
-    pub fn data(&self) -> Bytes {
-        self.data.clone()
+    /// Returns a reference of the [bytes][Bytes] of the file data.
+    pub fn data(&self) -> &Bytes {
+        &self.data
     }
 
-    /// Returns this [`FileBlob`] name.
-    pub fn name(&self) -> String {
-        self.name.clone()
+    /// Returns a reference to this file's name.
+    pub fn name(&self) -> &String {
+        &self.name
     }
 
     /// The size of this [`FileBlob`]
@@ -132,9 +134,9 @@ impl FileBlob {
         self.size
     }
 
-    /// Returns the full path for this [`FileBlob`].
-    pub fn path(&self) -> String {
-        self.path.clone()
+    /// Returns a reference to the actual file path of this file.
+    pub fn path(&self) -> &String {
+        &self.path
     }
 }
 

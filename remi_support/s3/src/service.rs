@@ -19,8 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use std::{borrow::Cow, io::Result, path::Path};
-
 use crate::config::S3StorageConfig;
 use async_trait::async_trait;
 use aws_config::AppName;
@@ -29,6 +27,7 @@ use aws_sdk_s3::{config::Credentials, primitives::ByteStream, types::Object, Cli
 use bytes::{Bytes, BytesMut};
 use log::*;
 use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
+use std::{borrow::Cow, io::Result, path::Path};
 use tokio::io::{AsyncReadExt, BufReader};
 
 #[derive(Debug, Clone)]

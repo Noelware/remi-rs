@@ -45,7 +45,7 @@ This example assumes you're using Tokio as the async runtime.
 ```toml
 [dependencies]
 tokio = { version = "1.28", features = ["fs", "io_util"] }
-remi = "0.2"
+remi = "0.3"
 ```
 
 ```rust

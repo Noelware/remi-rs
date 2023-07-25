@@ -34,12 +34,14 @@ use tokio::{fs::*, io::*};
 #[cfg(feature = "async_std")]
 use async_std::{fs::*, io::*};
 
+#[cfg(feature = "log")]
+use log::*;
+
 use crate::{
     content_type::{ContentTypeResolver, DefaultContentTypeResolver},
     FilesystemStorageConfig,
 };
 use async_trait::async_trait;
-use log::*;
 use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 
 #[derive(Debug, Clone)]
@@ -52,10 +54,7 @@ impl FilesystemStorageService {
     /// Creates a new [`FilesystemStorageService`] service.
     pub fn new<P: AsRef<Path>>(path: P) -> FilesystemStorageService {
         let config = FilesystemStorageConfig::new(path.as_ref().to_string_lossy().into_owned());
-        FilesystemStorageService {
-            config,
-            resolver: Arc::new(Box::new(DefaultContentTypeResolver)),
-        }
+        FilesystemStorageService::with_config(config)
     }
 
     /// Initializes a new [`FilesystemStorageService`] with a given [`FilesystemStorageConfig`] object
@@ -81,7 +80,12 @@ impl FilesystemStorageService {
     pub fn normalize<P: AsRef<Path>>(&self, path: P) -> Result<Option<PathBuf>> {
         let path = path.as_ref();
         if path == self.config.directory() {
-            warn!("current path specified was the config directory, returning that");
+            #[cfg(feature = "log")]
+            debug!(
+                "current path ({}) specified was the config directory, returning that",
+                path.display()
+            );
+
             return std::fs::canonicalize(self.config.directory()).map(|x| Ok(Some(x)))?;
         }
 
@@ -92,6 +96,7 @@ impl FilesystemStorageService {
                 path.strip_prefix("./").unwrap().display()
             );
 
+            #[cfg(feature = "log")]
             trace!("normalized relative path [{}] to [{buf}]", path.display());
             return Ok(Some(Path::new(&buf).to_path_buf()));
         }
@@ -99,6 +104,7 @@ impl FilesystemStorageService {
         if path.starts_with("~/") {
             let home_dir = dirs::home_dir();
             if home_dir.is_none() {
+                #[cfg(feature = "log")]
                 warn!("unable to resolve home dir with path [{}]", path.display());
                 return Ok(None);
             }
@@ -110,11 +116,13 @@ impl FilesystemStorageService {
                 path.strip_prefix("~/").unwrap().display()
             );
 
-            trace!("resolved relative path [{}] to [{dir}]", path.display());
+            #[cfg(feature = "log")]
+            debug!("resolved relative path [{}] to [{dir}]", path.display());
             return Ok(Some(Path::new(&dir).to_path_buf()));
         }
 
-        trace!(
+        #[cfg(feature = "log")]
+        warn!(
             "unable to normalize [{}], won't be doing anything",
             path.display()
         );
@@ -131,9 +139,8 @@ impl StorageService for FilesystemStorageService {
 
     async fn init(&self) -> Result<()> {
         let dir = self.config.directory();
-        info!("checking if directory [{}] exists...", dir.display());
-
         if !dir.exists() {
+            #[cfg(feature = "log")]
             warn!(
                 "creating directory [{}] since it didn't exist, creating!",
                 dir.display()
@@ -162,9 +169,12 @@ impl StorageService for FilesystemStorageService {
         }
 
         let normalized = normalized.unwrap();
+
+        #[cfg(feature = "log")]
         trace!("attempting to open file [{}]", normalized.display());
 
         if !normalized.exists() {
+            #[cfg(feature = "log")]
             warn!("file [{}] doesn't exist", normalized.display());
             return Ok(None);
         }
@@ -196,10 +206,14 @@ impl StorageService for FilesystemStorageService {
         }
 
         let normalized = normalized.unwrap();
+
+        #[cfg(feature = "log")]
         trace!("attempting to open file [{}]", normalized.display());
 
         if !normalized.exists() {
+            #[cfg(feature = "log")]
             warn!("file [{}] doesn't exist", normalized.display());
+
             return Ok(None);
         }
 
@@ -298,6 +312,7 @@ impl StorageService for FilesystemStorageService {
 
             let normalized = normalized.unwrap();
             if normalized.is_file() {
+                #[cfg(feature = "log")]
                 warn!(
                     "not searching in path [{}] due to it being a file",
                     normalized.display()
@@ -307,6 +322,8 @@ impl StorageService for FilesystemStorageService {
             }
 
             let search_for = format!("{}{prefix}", normalized.display());
+
+            #[cfg(feature = "log")]
             trace!("listing all blobs in directory [{search_for}]");
 
             let mut items = read_dir(search_for).await?;
@@ -349,6 +366,7 @@ impl StorageService for FilesystemStorageService {
 
         let normalized = normalized.unwrap();
         if normalized.is_file() {
+            #[cfg(feature = "log")]
             warn!(
                 "not searching in path [{}] due to it being a file",
                 normalized.display()
@@ -358,6 +376,8 @@ impl StorageService for FilesystemStorageService {
         }
 
         let search_for = format!("{}{prefix}", normalized.display());
+
+        #[cfg(feature = "log")]
         trace!("listing all blobs in directory [{search_for}]");
 
         let mut items = read_dir(search_for).await?;
@@ -401,9 +421,12 @@ impl StorageService for FilesystemStorageService {
         }
 
         let normalized = normalized.unwrap();
+
+        #[cfg(feature = "log")]
         trace!("deleting file [{}]", normalized.display());
 
         if !normalized.exists() {
+            #[cfg(feature = "log")]
             warn!("file [{}] doesn't exist", normalized.display());
             return Ok(());
         }
@@ -436,6 +459,7 @@ impl StorageService for FilesystemStorageService {
 
         let normalized = normalized.unwrap();
         if normalized.exists() {
+            #[cfg(feature = "log")]
             warn!(
                 "file [{}] already exists, attempting to overwrite...",
                 normalized.display()
