@@ -79,4 +79,5 @@ mod content_type;
 mod service;
 
 pub use crate::config::FilesystemStorageConfig;
+pub use crate::content_type::*;
 pub use crate::service::FilesystemStorageService;
