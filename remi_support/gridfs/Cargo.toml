@@ -40,6 +40,6 @@ log = "0.4.19"
 mongodb = "2.6.0"
 mongodb-gridfs = "0.2.5"
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
-serde = { version = "1.0.175", features = ["derive"], optional = true }
+serde = { version = "1.0.176", features = ["derive"], optional = true }
 tokio = { version = "1.29.1", features = ["full"] }
 tokio-stream = "0.1.14"
