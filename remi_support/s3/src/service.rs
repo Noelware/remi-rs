@@ -19,13 +19,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#[cfg(feature = "log")]
+use log::*;
+
 use crate::config::S3StorageConfig;
 use async_trait::async_trait;
 use aws_config::AppName;
 use aws_credential_types::provider::SharedCredentialsProvider;
 use aws_sdk_s3::{config::Credentials, primitives::ByteStream, types::Object, Client, Config};
 use bytes::{Bytes, BytesMut};
-use log::*;
 use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 use std::{borrow::Cow, io::Result, path::Path};
 use tokio::io::{AsyncReadExt, BufReader};
@@ -81,6 +83,7 @@ impl S3StorageService {
     }
 
     pub(crate) fn configure(&mut self) {
+        #[cfg(feature = "log")]
         info!(
             "setting up AWS SDK client with endpoint {} for app name [{:?}]",
             self.config.endpoint(),
@@ -144,6 +147,7 @@ impl StorageService for S3StorageService {
     }
 
     async fn init(&self) -> Result<()> {
+        #[cfg(feature = "log")]
         info!("Ensuring bucket [{}] exists...", self.config.bucket());
 
         // Check if the bucket exists
@@ -166,6 +170,8 @@ impl StorageService for S3StorageService {
 
         if !has_bucket {
             let bucket = self.config.bucket();
+
+            #[cfg(feature = "log")]
             warn!("Bucket [{bucket}] doesn't exist, creating!");
 
             self.client
@@ -176,6 +182,7 @@ impl StorageService for S3StorageService {
                 .await
                 .map_err(|x| to_io_error!(x))?;
         } else {
+            #[cfg(feature = "log")]
             info!("Bucket [{}] exists!", self.config.bucket());
         }
 
@@ -184,6 +191,8 @@ impl StorageService for S3StorageService {
 
     async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
         let normalized = self.resolve_path(path.as_ref());
+
+        #[cfg(feature = "log")]
         trace!("opening file {normalized}...");
 
         let obj = self
@@ -222,6 +231,8 @@ impl StorageService for S3StorageService {
     async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>> {
         let path = path.as_ref();
         let normalized = self.resolve_path(path);
+
+        #[cfg(feature = "log")]
         trace!("opening file {normalized}...");
 
         let obj = self
@@ -292,17 +303,22 @@ impl StorageService for S3StorageService {
             loop {
                 let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
                 let entries = resp.contents().unwrap_or_default();
+
+                #[cfg(feature = "log")]
                 trace!("found {} entries", entries.len());
 
                 for entry in entries {
                     let name = entry.key();
                     if name.is_none() {
+                        #[cfg(feature = "log")]
                         trace!("skipping entry due to no name");
+
                         continue;
                     }
 
                     let name = name.unwrap();
                     if options.is_excluded(name) {
+                        #[cfg(feature = "log")]
                         debug!("S3 object with key [{name}] is being excluded from output");
                     }
 
@@ -311,11 +327,14 @@ impl StorageService for S3StorageService {
                             blobs.push(blob);
                         }
 
+                        #[cfg(feature = "log")]
                         Err(e) => {
                             warn!("skipping error [{e}] when listing objects, object [{name:?}] will not be present in the final result");
                             continue;
                         }
 
+                        #[cfg(not(feature = "log"))]
+                        Err(_) => continue,
                         _ => continue,
                     }
                 }
@@ -344,17 +363,22 @@ impl StorageService for S3StorageService {
         loop {
             let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
             let entries = resp.contents().unwrap_or_default();
+
+            #[cfg(feature = "log")]
             trace!("found {} entries", entries.len());
 
             for entry in entries {
                 let name = entry.key();
                 if name.is_none() {
+                    #[cfg(feature = "log")]
                     trace!("skipping entry due to no name");
+
                     continue;
                 }
 
                 let name = name.unwrap();
                 if options.is_excluded(name) {
+                    #[cfg(feature = "log")]
                     debug!("S3 object with key [{name}] is being excluded from output");
                 }
 
@@ -363,11 +387,14 @@ impl StorageService for S3StorageService {
                         blobs.push(blob);
                     }
 
+                    #[cfg(feature = "log")]
                     Err(e) => {
                         warn!("skipping error [{e}] when listing objects, object [{name:?}] will not be present in the final result");
                         continue;
                     }
 
+                    #[cfg(not(feature = "log"))]
+                    Err(_) => continue,
                     _ => continue,
                 }
             }
@@ -432,6 +459,7 @@ impl StorageService for S3StorageService {
             .content_type
             .unwrap_or("application/octet-stream".into());
 
+        #[cfg(feature = "log")]
         trace!("uploading object [{path}] with content type [{content_type:?}]");
         let len = options.data.len();
         let stream: ByteStream = options.data.into();
