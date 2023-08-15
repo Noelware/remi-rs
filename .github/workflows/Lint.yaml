@@ -71,7 +71,7 @@ jobs:
               uses: Swatinem/rust-cache@v2
 
             - name: Pull dependencies
-              run: cargo build
+              run: cargo build --all-features
     clippy:
         name: Clippy
         runs-on: ubuntu-latest

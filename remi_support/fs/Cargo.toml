@@ -27,6 +27,7 @@ repository = "https://github.com/Noelware/remi-rs/tree/master/support/remi_fs"
 license = "MIT"
 edition = "2021"
 # homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_fs"
+rust-version = "1.67.0"
 
 [features]
 file-format = ["dep:infer", "dep:file-format"]

@@ -27,6 +27,7 @@ repository = "https://github.com/Noelware/remi-rs/tree/master/support/remi_s3"
 license = "MIT"
 edition = "2021"
 # homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi_s3"
+rust-version = "1.67.0"
 
 [features]
 default = []
