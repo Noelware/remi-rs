@@ -23,46 +23,68 @@ use aws_sdk_s3::{
     config::Region,
     types::{BucketCannedAcl, ObjectCannedAcl},
 };
-use derive_builder::Builder;
 
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct S3StorageConfig {
+    /// Whether if the S3 storage backend should enable AWSv4 signatures when requests
+    /// come in or not.
     #[cfg_attr(feature = "serde", serde(default))]
-    enable_signer_v4_requests: bool,
+    pub enable_signer_v4_requests: bool,
 
+    /// Whether if path access style should be enabled or not. This is recommended
+    /// to be set to `true` on MinIO instances.
+    ///
+    /// - Enabled: `https://{host}/{bucket}/...`
+    /// - Disabled: `https://{bucket}.{host}/...`
     #[cfg_attr(feature = "serde", serde(default))]
-    enforce_path_access_style: bool,
+    pub enforce_path_access_style: bool,
 
+    /// Default ACL for all new objects.
     #[cfg_attr(
         feature = "serde",
         serde(with = "object_acl", skip_serializing_if = "Option::is_none")
     )]
-    default_object_acl: Option<ObjectCannedAcl>,
+    pub default_object_acl: Option<ObjectCannedAcl>,
 
+    /// Default ACL to use when a bucket doesn't exist and #init was called
+    /// from the backend.
     #[cfg_attr(
         feature = "serde",
         serde(with = "bucket_acl", skip_serializing_if = "Option::is_none")
     )]
-    default_bucket_acl: Option<BucketCannedAcl>,
-    secret_access_key: String,
-    access_key_id: String,
+    pub default_bucket_acl: Option<BucketCannedAcl>,
 
+    /// The secret access key to authenticate with S3
+    pub secret_access_key: String,
+
+    /// The access key ID to authenticate with S3
+    pub access_key_id: String,
+
+    /// Application name. This is set to `remi-s3` if not provided.
     #[cfg_attr(feature = "serde", serde(default))]
-    app_name: Option<String>,
+    pub app_name: Option<String>,
 
+    /// AWS endpoint to reach.
     #[cfg_attr(feature = "serde", serde(default))]
-    endpoint: Option<String>,
+    pub endpoint: Option<String>,
 
+    /// Prefix for querying and inserting new blobs into S3.
     #[cfg_attr(feature = "serde", serde(default))]
-    prefix: Option<String>,
+    pub prefix: Option<String>,
 
+    /// The region to use, this will default to `us-east-1`.
     #[cfg_attr(
         feature = "serde",
         serde(with = "region", skip_serializing_if = "Option::is_none")
     )]
-    region: Option<Region>,
-    bucket: String,
+    pub region: Option<Region>,
+
+    /// Bucket to use for querying and inserting objects in.
+    pub bucket: String,
+
+    #[cfg_attr(feature = "serde", serde(skip))]
+    sealed: bool,
 }
 
 #[cfg(feature = "serde")]
@@ -140,91 +162,170 @@ mod object_acl {
 }
 
 impl S3StorageConfig {
-    /// Returns a [builder][S3StorageConfigBuilder] object
-    pub fn builder() -> S3StorageConfigBuilder {
-        S3StorageConfigBuilder::default()
-    }
-
-    /// Checks if using AWS Signer v4 requests should be used instead of the default
-    pub fn enable_signer_v4_requests(&self) -> bool {
-        self.enable_signer_v4_requests
-    }
-
-    /// Checks if the AWS endpoint should enforce the path style access (`<endpoint>/<bucket>`)
-    /// rather than `<bucket>.<endpoint>`. This is recommended to be set in MinIO installations that
-    /// use this crate.
-    pub fn enforce_path_access_style(&self) -> bool {
-        self.enforce_path_access_style
-    }
-
-    /// Returns the default [`ObjectCannedACL`] for all blobs that are uploaded with
-    /// the `upload` function. If this was a `Option::None` variant, it will use the
-    /// `public-read` ACL.
-    pub fn default_object_acl(&self) -> ObjectCannedAcl {
-        match self.default_object_acl.clone() {
-            Some(o) => o,
-            None => ObjectCannedAcl::PublicRead,
+    /// Seals this [`S3StorageConfig`] as an owned, immutable variable.
+    pub fn seal(&mut self) -> Self {
+        S3StorageConfig {
+            enable_signer_v4_requests: self.enable_signer_v4_requests,
+            enforce_path_access_style: self.enforce_path_access_style,
+            default_object_acl: self.default_object_acl.clone(),
+            default_bucket_acl: self.default_bucket_acl.clone(),
+            secret_access_key: self.access_key_id.clone(),
+            access_key_id: self.access_key_id.clone(),
+            app_name: self.app_name.clone(),
+            endpoint: self.endpoint.clone(),
+            prefix: self.prefix.clone(),
+            region: self.region.clone(),
+            bucket: self.bucket.clone(),
+            sealed: true,
         }
     }
 
-    /// Returns the default [`BucketCannedACL`] for the bucket if the bucket doesn't already exists
-    /// in S3. If this option was a `Option::None` variant, it will use the `public-read` ACL permission.
-    pub fn default_bucket_acl(&self) -> BucketCannedAcl {
-        match self.default_bucket_acl.clone() {
-            Some(b) => b,
-            None => BucketCannedAcl::PublicRead,
-        }
-    }
-
-    /// Returns the secret access key when authenticating with AWS S3.
-    pub fn secret_access_key(&self) -> String {
-        self.secret_access_key.clone()
-    }
-
-    /// Returns the access key ID when authenticating with AWS S3.
-    pub fn access_key_id(&self) -> String {
-        self.access_key_id.clone()
-    }
-
-    /// Returns a reference of the application name for the AWS SDK to use, it will
-    /// use `remi_rs` as the default one.
-    pub fn app_name(&self) -> Option<String> {
-        self.app_name.clone()
-    }
-
-    /// Returns the S3 endpoint to connect to. If this is a `Option::None` variant, it will default
-    /// to `s3.amazonaws.com`.
+    /// Sets the [`enable_signer_v4_requests`](S3StorageConfig::enable_signer_v4_requests) property
+    /// to whatever `enabled` is.
     ///
-    /// If you're using Wasabi, you will need to set the endpoint to `s3.wasabisys.com`. If you're connecting to
-    /// your MinIO server, just use the endpoint that is used with the S3 API.
-    pub fn endpoint(&self) -> String {
-        match self.endpoint.clone() {
-            Some(endpoint) => endpoint,
-            None => "https://s3.amazonaws.com".to_owned(),
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_enable_signer_v4_requests(&mut self, enabled: bool) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
         }
+
+        self.enable_signer_v4_requests = enabled;
+        self
     }
 
-    /// Returns the prefix to use when interacting with blobs. This is most useful to filter out
-    /// any blobs that you might not be using. The prefix will be resolved when using any method
-    /// of the storage service.
+    /// Sets the [`enforce_path_access_style`](S3StorageConfig::enforce_path_access_style) property
+    /// to what `enforce` is.
     ///
-    /// ## Examples
-    /// - `prefix: Some("awau/owo".into())` -> `s3://<bucket>/awau/owo/<path>`
-    /// - `prefix: None` -> `s3://<bucket>/<path>`
-    pub fn prefix(&self) -> Option<String> {
-        self.prefix.clone()
-    }
-
-    /// Returns the region to connect to when connecting to S3. By default, it will use the `us-east-1` region.
-    pub fn region(&self) -> Region {
-        match self.region.clone() {
-            Some(region) => region,
-            None => Region::from_static("us-east-1"),
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_enforce_path_access_style(&mut self, enforce: bool) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
         }
+
+        self.enforce_path_access_style = enforce;
+        self
     }
 
-    /// Returns the bucket to operate on.
-    pub fn bucket(&self) -> String {
-        self.bucket.clone()
+    /// Sets the [`default_object_acl`](S3StorageConfig::default_object_acl) property
+    /// to what `acl` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_default_object_acl(&mut self, acl: Option<ObjectCannedAcl>) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.default_object_acl = acl;
+        self
+    }
+
+    /// Sets the [`default_bucket_acl`](S3StorageConfig::default_bucket_acl) property
+    /// to what `acl` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_default_bucket_acl(&mut self, acl: Option<BucketCannedAcl>) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.default_bucket_acl = acl;
+        self
+    }
+
+    /// Sets the [`secret_access_key`](S3StorageConfig::secret_access_key) property
+    /// to what `key` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_secret_access_key<I: Into<String>>(&mut self, key: I) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.secret_access_key = key.into();
+        self
+    }
+
+    /// Sets the [`access_key_id`](S3StorageConfig::access_key_id) property
+    /// to what `key` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_access_key_id<I: Into<String>>(&mut self, key: I) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.access_key_id = key.into();
+        self
+    }
+
+    /// Sets the [`app_name`](S3StorageConfig::app_name) property to what `name` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_app_name<I: Into<String>>(&mut self, name: Option<I>) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.app_name = name.map(|i| i.into());
+        self
+    }
+
+    /// Sets the [`endpoint`](S3StorageConfig::endpoint) property to what `endpoint` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_endpoint<I: Into<String>>(&mut self, endpoint: Option<I>) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.endpoint = endpoint.map(|i| i.into());
+        self
+    }
+
+    /// Sets the [`prefix`](S3StorageConfig::prefix) property to what `prefix` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_prefix<I: Into<String>>(&mut self, prefix: Option<I>) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.prefix = prefix.map(|i| i.into());
+        self
+    }
+
+    /// Sets the [`prefix`](S3StorageConfig::region) property to what `region` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_region<I: Into<Region>>(&mut self, region: Option<I>) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.region = region.map(|i| i.into());
+        self
+    }
+
+    /// Sets the [`bucket`](S3StorageConfig::prefix) property to what `bucket` is.
+    ///
+    /// ### Safety
+    /// Panics if `seal()` was called after this method.
+    pub fn with_bucket<I: Into<String>>(&mut self, bucket: I) -> &mut Self {
+        if self.sealed {
+            panic!("configuration is already sealed, please do not use any overwriting methods like with_*");
+        }
+
+        self.bucket = bucket.into();
+        self
     }
 }

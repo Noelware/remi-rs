@@ -26,7 +26,12 @@ use crate::config::S3StorageConfig;
 use async_trait::async_trait;
 use aws_config::AppName;
 use aws_credential_types::provider::SharedCredentialsProvider;
-use aws_sdk_s3::{config::Credentials, primitives::ByteStream, types::Object, Client, Config};
+use aws_sdk_s3::{
+    config::Credentials,
+    primitives::ByteStream,
+    types::{BucketCannedAcl, Object, ObjectCannedAcl},
+    Client, Config,
+};
 use bytes::{Bytes, BytesMut};
 use remi_core::{Blob, DirectoryBlob, FileBlob, ListBlobsRequest, StorageService, UploadRequest};
 use std::{borrow::Cow, io::Result, path::Path};
@@ -50,24 +55,27 @@ impl S3StorageService {
         let mut sdk_config = Config::builder();
         sdk_config.set_credentials_provider(Some(SharedCredentialsProvider::new(
             Credentials::new(
-                config.access_key_id(),
-                config.secret_access_key(),
+                config.access_key_id.clone(),
+                config.secret_access_key.clone(),
                 None,
                 None,
                 "remi-rs",
             ),
         )));
 
-        sdk_config.set_endpoint_url(Some(config.endpoint()));
+        sdk_config.set_endpoint_url(config.endpoint.clone());
         sdk_config.set_app_name(Some(
-            AppName::new(Cow::Owned(config.app_name().unwrap_or("remi-rs".into()))).unwrap(),
+            AppName::new(Cow::Owned(
+                config.app_name.clone().unwrap_or("remi-rs".into()),
+            ))
+            .unwrap(),
         ));
 
-        if config.enforce_path_access_style() {
+        if config.enforce_path_access_style {
             sdk_config.set_force_path_style(Some(true));
         }
 
-        let sdk_config = sdk_config.region(config.region()).build();
+        let sdk_config = sdk_config.region(config.region.clone()).build();
         S3StorageService {
             config,
             client: Client::from_conf(sdk_config),
@@ -86,40 +94,39 @@ impl S3StorageService {
         #[cfg(feature = "log")]
         info!(
             "setting up AWS SDK client with endpoint {} for app name [{:?}]",
-            self.config.endpoint(),
-            self.config.app_name()
+            self.config.endpoint, self.config.app_name
         );
 
         let mut sdk_config = Config::builder();
         sdk_config.set_credentials_provider(Some(SharedCredentialsProvider::new(
             Credentials::new(
-                self.config.access_key_id(),
-                self.config.secret_access_key(),
+                self.config.access_key_id.clone(),
+                self.config.secret_access_key.clone(),
                 None,
                 None,
                 "remi-rs",
             ),
         )));
 
-        sdk_config.set_endpoint_url(Some(self.config.endpoint()));
+        sdk_config.set_endpoint_url(self.config.endpoint.clone());
         sdk_config.set_app_name(Some(
             AppName::new(Cow::Owned(
-                self.config.app_name().unwrap_or("remi-rs".into()),
+                self.config.app_name.clone().unwrap_or("remi-rs".into()),
             ))
             .unwrap(),
         ));
 
-        if self.config.enforce_path_access_style() {
+        if self.config.enforce_path_access_style {
             sdk_config.set_force_path_style(Some(true));
         }
 
-        let sdk_config = sdk_config.region(self.config.region()).build();
+        let sdk_config = sdk_config.region(self.config.region.clone()).build();
         self.client = Client::from_conf(sdk_config);
     }
 
     pub(crate) fn resolve_path<P: AsRef<Path>>(&self, path: P) -> String {
         let config = self.config.clone();
-        match config.prefix() {
+        match config.prefix {
             Some(p) => format!("{p}/{}", path.as_ref().display()),
             None => path.as_ref().to_string_lossy().clone().to_string(),
         }
@@ -165,11 +172,11 @@ impl StorageService for S3StorageService {
                 return false;
             }
 
-            name.unwrap() == self.config.bucket()
+            name.unwrap() == self.config.bucket
         });
 
         if !has_bucket {
-            let bucket = self.config.bucket();
+            let bucket = self.config.bucket.clone();
 
             #[cfg(feature = "log")]
             warn!("Bucket [{bucket}] doesn't exist, creating!");
@@ -177,7 +184,12 @@ impl StorageService for S3StorageService {
             self.client
                 .create_bucket()
                 .bucket(bucket.clone())
-                .acl(self.config.default_bucket_acl())
+                .acl(
+                    self.config
+                        .default_bucket_acl
+                        .clone()
+                        .unwrap_or(BucketCannedAcl::Private),
+                )
                 .send()
                 .await
                 .map_err(|x| to_io_error!(x))?;
@@ -198,7 +210,7 @@ impl StorageService for S3StorageService {
         let obj = self
             .client
             .get_object()
-            .bucket(self.config.bucket())
+            .bucket(self.config.bucket.clone())
             .key(normalized)
             .send()
             .await;
@@ -238,7 +250,7 @@ impl StorageService for S3StorageService {
         let obj = self
             .client
             .get_object()
-            .bucket(self.config.bucket())
+            .bucket(self.config.bucket.clone())
             .key(normalized.clone())
             .send()
             .await;
@@ -297,7 +309,7 @@ impl StorageService for S3StorageService {
             let mut req = self
                 .client
                 .list_objects_v2()
-                .bucket(self.config.bucket())
+                .bucket(self.config.bucket.clone())
                 .max_keys(1000); // TODO: add this in ListBlobsRequest?
 
             loop {
@@ -356,7 +368,7 @@ impl StorageService for S3StorageService {
         let mut req = self
             .client
             .list_objects_v2()
-            .bucket(self.config.bucket())
+            .bucket(self.config.bucket.clone())
             .max_keys(1000) // TODO: add this in ListBlobsRequest?
             .set_prefix(Some(resolved));
 
@@ -412,7 +424,7 @@ impl StorageService for S3StorageService {
     async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()> {
         self.client
             .delete_object()
-            .bucket(self.config.bucket())
+            .bucket(self.config.bucket.clone())
             .key(self.resolve_path(path))
             .send()
             .await
@@ -424,7 +436,7 @@ impl StorageService for S3StorageService {
         let res = self
             .client
             .head_object()
-            .bucket(self.config.bucket())
+            .bucket(self.config.bucket.clone())
             .key(self.resolve_path(path))
             .send()
             .await
@@ -466,12 +478,21 @@ impl StorageService for S3StorageService {
 
         self.client
             .put_object()
-            .bucket(self.config.bucket())
+            .bucket(self.config.bucket.clone())
             .key(path)
-            .acl(self.config.default_object_acl())
+            .acl(
+                self.config
+                    .default_object_acl
+                    .clone()
+                    .unwrap_or(ObjectCannedAcl::BucketOwnerFullControl),
+            )
             .body(stream)
             .content_type(content_type)
             .content_length(len as i64)
+            .set_metadata(match options.metadata.is_empty() {
+                true => None,
+                false => Some(options.metadata.clone()),
+            })
             .send()
             .await
             .map(|_| ())

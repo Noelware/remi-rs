@@ -188,7 +188,7 @@ impl StorageService for FilesystemStorageService {
 
         let metadata = file.metadata().await?;
         let size = metadata.len();
-        let mut buf = Vec::new();
+        let mut buf = vec![0; size as usize];
 
         buf.resize(size as usize, 0);
         file.read_exact(&mut buf).await?;

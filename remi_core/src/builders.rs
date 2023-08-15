@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use std::collections::HashMap;
+
 use bytes::Bytes;
 
 /// Represents the request options for querying blobs from a storage
@@ -40,11 +42,19 @@ pub struct ListBlobsRequest {
 
     /// Optional prefix to set when querying for blobs.
     pub prefix: Option<String>,
+    sealed: bool,
 }
 
 impl ListBlobsRequest {
     /// Appends a slice of strings to exclude from.
+    ///
+    /// ### Safety
+    /// This method panics if `seal()` was called
     pub fn exclude(&mut self, items: &[&str]) -> &mut Self {
+        if self.sealed {
+            panic!("request option ListBlobsRequest.exclude failed: request is already sealed.");
+        }
+
         self.excluded
             .append(&mut items.iter().map(|val| val.to_string()).collect::<Vec<_>>());
 
@@ -52,14 +62,28 @@ impl ListBlobsRequest {
     }
 
     /// Sets a prefix to this request.
-    pub fn prefix(&mut self, prefix: Option<String>) -> &mut Self {
-        self.prefix = prefix;
+    ///
+    /// ### Safety
+    /// This method panics if `seal()` was called
+    pub fn with_prefix<I: Into<String>>(&mut self, prefix: Option<I>) -> &mut Self {
+        if self.sealed {
+            panic!("request option ListBlobsRequest.prefix failed: request is already sealed.");
+        }
+
+        self.prefix = prefix.map(|i| i.into());
         self
     }
 
     /// Appends a list of extensions that can be use to filter files from
     /// in the given directory that items were found.
-    pub fn extensions(&mut self, exts: &[&str]) -> &mut Self {
+    ///
+    /// ### Safety
+    /// This method panics if `seal()` was called
+    pub fn with_extensions(&mut self, exts: &[&str]) -> &mut Self {
+        if self.sealed {
+            panic!("request option ListBlobsRequest.extensions failed: request is already sealed.");
+        }
+
         self.extensions.append(
             &mut exts
                 .iter()
@@ -74,9 +98,32 @@ impl ListBlobsRequest {
     /// Whether if the response should include directory blobs or not. If this set
     /// to false, then it will only include file blobs in the given directory
     /// where the request is being processed.
-    pub fn include_dirs(&mut self, yes: bool) -> &mut Self {
+    /// ### Safety
+    /// This method panics if `seal()` was called
+    pub fn with_include_dirs(&mut self, yes: bool) -> &mut Self {
+        if self.sealed {
+            panic!(
+                "request option ListBlobsRequest.include_dirs failed: request is already sealed."
+            );
+        }
+
         self.include_dirs = yes;
         self
+    }
+
+    /// Seals this mutable reference and returns a new immutable, owned
+    /// value.
+    ///
+    /// ### Safety
+    /// This method panics if `seal()` was called
+    pub fn seal(&mut self) -> Self {
+        ListBlobsRequest {
+            include_dirs: self.include_dirs,
+            extensions: self.extensions.clone(),
+            excluded: self.excluded.clone(),
+            prefix: self.prefix.clone(),
+            sealed: true,
+        }
     }
 
     /// Checks if the given item is excluded or not.
@@ -129,13 +176,27 @@ pub struct UploadRequest {
     /// you use will try to determine it automatically if it can.
     pub content_type: Option<String>,
 
+    /// Extra metadata to insert. Metadata can be queried when blobs
+    /// are queried.
+    ///
+    /// - Filesystem: This will not do anything.
+    /// - S3: This will insert it into the object's metadata
+    /// - Gridfs: This will be inserted with the file metadata.
+    /// - Azure: This will not do anything.
+    /// - GCS: This will not do anything.
+    pub metadata: HashMap<String, String>,
+
     /// [`Bytes`] container of the given data to send to the service
     /// or to write to local disk (with `remi_fs`).
     pub data: Bytes,
+    sealed: bool,
 }
 
 impl UploadRequest {
     /// Overrides the content type when the request is sent.
+    ///
+    /// ## Safety
+    /// This method will panic if `seal()` was called before this method.
     ///
     /// ## Example
     /// ```
@@ -144,16 +205,36 @@ impl UploadRequest {
     /// let mut req = UploadRequest::default();
     /// assert!(req.content_type.is_none());
     ///
-    /// let _ = req.content_type(Some("application/json; charset=utf-8".into()));
+    /// let _ = req.with_content_type(Some("application/json; charset=utf-8".into()));
     /// assert!(req.content_type.is_some());
     /// assert_eq!(req.content_type.unwrap().as_str(), "application/json; charset=utf-8");
     /// ```
-    pub fn content_type(&mut self, content_type: Option<String>) -> &mut Self {
+    pub fn with_content_type(&mut self, content_type: Option<String>) -> &mut Self {
+        if self.sealed {
+            panic!("request option UploadRequest.content_type failed: `seal()` was called before this method.");
+        }
+
         self.content_type = content_type;
         self
     }
 
+    /// Appends new metadata to this request.
+    ///
+    /// ## Safety
+    /// This method will panic if `seal()` was called before this method.
+    pub fn with_metadata(&mut self, metadata: HashMap<String, String>) -> &mut Self {
+        if self.sealed {
+            panic!("request option UploadRequest.content_type failed: `seal()` was called before this method.");
+        }
+
+        self.metadata = metadata;
+        self
+    }
+
     /// Overrides the data container for this request to a new container provided.
+    ///
+    /// ## Safety
+    /// This method will panic if `seal()` was called before this method.
     ///
     /// ## Example
     /// ```
@@ -163,11 +244,25 @@ impl UploadRequest {
     /// let mut req = UploadRequest::default();
     /// assert!(req.data.is_empty());
     ///
-    /// let _ = req.data(Bytes::from_static(&[0x12, 0x13]));
+    /// let _ = req.with_data(Bytes::from_static(&[0x12, 0x13]));
     /// assert!(!req.data.is_empty());
     /// ```
-    pub fn data(&mut self, container: Bytes) -> &mut Self {
+    pub fn with_data(&mut self, container: Bytes) -> &mut Self {
+        if self.sealed {
+            panic!("request option UploadRequest.content_type failed: `seal()` was called before this method.");
+        }
+
         self.data = container;
         self
+    }
+
+    /// Seals this mutable reference and returns an owned, immutable value.
+    pub fn seal(&mut self) -> Self {
+        UploadRequest {
+            content_type: self.content_type.clone(),
+            metadata: self.metadata.clone(),
+            data: self.data.clone(),
+            sealed: true,
+        }
     }
 }

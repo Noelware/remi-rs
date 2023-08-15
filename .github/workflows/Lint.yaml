@@ -92,7 +92,7 @@ jobs:
               uses: Swatinem/rust-cache@v2
 
             - name: Clippy!
-              uses: auguwu/clippy-action@master
+              uses: auguwu/clippy-action@1.2.0
               with:
                 all-features: true
                 token: ${{secrets.GITHUB_TOKEN}}
