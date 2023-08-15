@@ -93,7 +93,7 @@ impl S3StorageService {
     pub(crate) fn configure(&mut self) {
         #[cfg(feature = "log")]
         info!(
-            "setting up AWS SDK client with endpoint {} for app name [{:?}]",
+            "setting up AWS SDK client with endpoint {:?} for app name [{:?}]",
             self.config.endpoint, self.config.app_name
         );
 
