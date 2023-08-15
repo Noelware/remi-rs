@@ -73,11 +73,8 @@ jobs:
             - name: Pull dependencies
               run: cargo build
     clippy:
-        name: Clippy (${{matrix.rust-version}})
+        name: Clippy
         runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                rust-version: [stable, nightly]
         steps:
             - name: Checkout repository
               uses: actions/checkout@v3
@@ -85,7 +82,7 @@ jobs:
             - name: Setup Rust toolchain
               uses: dtolnay/rust-toolchain@master
               with:
-                toolchain: ${{matrix.rust-version}}
+                toolchain: stable
                 components: clippy, rustfmt
 
             - name: Setup Rust cache
