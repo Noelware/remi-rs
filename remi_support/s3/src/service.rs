@@ -155,7 +155,7 @@ impl StorageService for S3StorageService {
 
     async fn init(&self) -> Result<()> {
         #[cfg(feature = "log")]
-        info!("Ensuring bucket [{}] exists...", self.config.bucket());
+        info!("Ensuring bucket [{}] exists...", self.config.bucket);
 
         // Check if the bucket exists
         let bucket_req = self
@@ -195,7 +195,7 @@ impl StorageService for S3StorageService {
                 .map_err(|x| to_io_error!(x))?;
         } else {
             #[cfg(feature = "log")]
-            info!("Bucket [{}] exists!", self.config.bucket());
+            info!("Bucket [{}] exists!", self.config.bucket);
         }
 
         Ok(())
@@ -245,7 +245,7 @@ impl StorageService for S3StorageService {
         let normalized = self.resolve_path(path);
 
         #[cfg(feature = "log")]
-        trace!("opening file {normalized}...");
+        trace!("opening file [{normalized}]");
 
         let obj = self
             .client

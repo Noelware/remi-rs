@@ -11,9 +11,9 @@ Enables the use of **serde** for the `S3StorageConfig` struct.
 ```toml
 [dependencies]
 # using the main `remi` crate
-remi = { version = "0.2", default-features = false, features = ["s3"] }
+remi = { version = "0.4", default-features = false, features = ["s3"] }
 
 # using this crate instead, you will need to use `remi_s3::S3StorageService`
 # if you plan on using this crate.
-remi-s3 = "0.2"
+remi-s3 = "0.4"
 ```

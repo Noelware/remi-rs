@@ -121,12 +121,6 @@ impl FilesystemStorageService {
             return Ok(Some(Path::new(&dir).to_path_buf()));
         }
 
-        #[cfg(feature = "log")]
-        warn!(
-            "unable to normalize [{}], won't be doing anything",
-            path.display()
-        );
-
         Ok(Some(path.to_path_buf()))
     }
 }
