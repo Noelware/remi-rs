@@ -38,7 +38,7 @@
 //!
 //! # Using the crate itself, which you can enable any feature you wish. You will need to write
 //! # the following examples as `remi_s3` instead of `remi::s3`.
-//! remi-s3 = "0.2"
+//! remi-s3 = "0.4"
 //! ```
 //!
 //! ```no_run
