@@ -42,5 +42,5 @@ aws-sdk-s3 = "0.30.0"
 bytes = "1.4.0"
 log = { version = "0.4.20", optional = true }
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
-serde = { version = "1.0.186", features = ["derive"], optional = true }
+serde = { version = "1.0.187", features = ["derive"], optional = true }
 tokio = { version = "1.32.0", default-features = false }
