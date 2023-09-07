@@ -35,7 +35,7 @@ serde = ["dep:serde"]
 
 [dependencies]
 async-trait = "0.1.73"
-bytes = "1.4.0"
+bytes = "1.5.0"
 derive_builder = "0.12.0"
 log = "0.4.20"
 mongodb = "2.6.1"
