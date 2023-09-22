@@ -38,7 +38,7 @@ log = ["dep:log"]
 async-trait = "0.1.73"
 aws-config = "0.56.1"
 aws-credential-types = "0.56.1"
-aws-sdk-s3 = "0.31.1"
+aws-sdk-s3 = "0.31.2"
 bytes = "1.5.0"
 log = { version = "0.4.20", optional = true }
 remi-core = { version = "0.0.0-devel.0", path = "../../remi_core" }
