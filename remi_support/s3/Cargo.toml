@@ -35,7 +35,7 @@ serde = ["dep:serde"]
 log = ["dep:log"]
 
 [dependencies]
-async-trait = "0.1.73"
+async-trait = "0.1.74"
 aws-config = "0.56.1"
 aws-credential-types = "0.56.1"
 aws-sdk-s3 = "0.32.0"
