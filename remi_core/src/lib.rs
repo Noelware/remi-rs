@@ -25,7 +25,7 @@
 //!
 //! ## Example
 //! ```no_run
-//! use emi_core::{StorageService, EmptyConfig};
+//! use remi_core::{StorageService, EmptyConfig};
 //! use async_trait::async_trait;
 //!
 //! struct MyStorageService;

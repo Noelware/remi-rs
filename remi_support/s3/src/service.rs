@@ -165,7 +165,7 @@ impl StorageService for S3StorageService {
             .await
             .map_err(|x| to_io_error!(x))?;
 
-        let buckets = bucket_req.buckets().unwrap_or_default();
+        let buckets = bucket_req.buckets();
         let has_bucket = buckets.iter().any(|x| {
             let name = x.name();
             if name.is_none() {
@@ -314,7 +314,7 @@ impl StorageService for S3StorageService {
 
             loop {
                 let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
-                let entries = resp.contents().unwrap_or_default();
+                let entries = resp.contents();
 
                 #[cfg(feature = "log")]
                 trace!("found {} entries", entries.len());
@@ -374,7 +374,7 @@ impl StorageService for S3StorageService {
 
         loop {
             let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
-            let entries = resp.contents().unwrap_or_default();
+            let entries = resp.contents();
 
             #[cfg(feature = "log")]
             trace!("found {} entries", entries.len());
@@ -443,12 +443,12 @@ impl StorageService for S3StorageService {
             .map(|resp| {
                 // If the object has a delete marker, we should return
                 // false for this.
-                if resp.delete_marker() {
+                if Some(true) == resp.delete_marker() {
                     return false;
                 }
 
-                // assume it is true? since the head_object throws
-                // a sdk error if it doesn't exist
+                // Otherwise, the header was present (in the case of None)
+                // or it was detected to not be a delete marker (false).
                 true
             });
 
