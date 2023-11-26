@@ -71,7 +71,6 @@ crates_dirs=(
     "gridfs"
     "azure"
     "gcp"
-    "oci"
     "s3"
     "fs"
 )
