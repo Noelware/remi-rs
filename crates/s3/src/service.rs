@@ -19,21 +19,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use bytes::Bytes;
-#[cfg(feature = "log")]
-use log::{debug, error, info, trace, warn};
-
-#[cfg(feature = "tracing")]
-use tracing::{debug, error, info, trace, warn};
-
 use crate::S3StorageConfig;
 use async_trait::async_trait;
 use aws_sdk_s3::{
-    types::{BucketCannedAcl, Object},
+    primitives::ByteStream,
+    types::{BucketCannedAcl, Object, ObjectCannedAcl},
     Client, Config,
 };
-use remi::{Blob, Directory, ListBlobsRequest, StorageService, UploadRequest};
+use bytes::{Bytes, BytesMut};
+use remi::{Blob, Directory, File, ListBlobsRequest, StorageService, UploadRequest};
 use std::{io, path::Path};
+use tokio::io::{AsyncReadExt, BufReader};
+
+const DEFAULT_CONTENT_TYPE: &str = "application/octet; charset=utf-8";
 
 macro_rules! to_io_error {
     ($x:expr) => {
@@ -101,32 +99,38 @@ impl S3StorageService {
 impl StorageService for S3StorageService {
     const NAME: &'static str = "remi:s3";
 
-    #[cfg_attr(feature = "tracing", ::tracing::instrument(name = "remi.s3.init", skip_all, remi.service = "s3", bucket = self.config.bucket))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.s3.init",
+            skip_all,
+            bucket = self.config.bucket
+        )
+    )]
     async fn init(&self) -> io::Result<()> {
         #[cfg(feature = "log")]
-        info!("ensuring that bucket [{}] exists!", self.config.bucket);
+        log::info!("ensuring that bucket [{}] exists!", self.config.bucket);
 
         #[cfg(feature = "tracing")]
-        info!(
+        tracing::info!(
             remi.service = "s3",
             bucket = self.config.bucket,
             "ensuring that bucket exists"
         );
 
         let output = self.client.list_buckets().send().await.map_err(|x| to_io_error!(x))?;
-
         if !output.buckets().iter().any(|x| match x.name() {
             Some(name) => name == self.config.bucket,
             None => false,
         }) {
             #[cfg(feature = "log")]
-            info!(
+            log::info!(
                 "creating bucket [{}] due to no bucket existing on this AWS account",
                 self.config.bucket
             );
 
             #[cfg(feature = "tracing")]
-            info!(
+            tracing::info!(
                 remi.service = "s3",
                 bucket = self.config.bucket,
                 "creating bucket due to the bucket not existing on this AWS account"
@@ -146,20 +150,20 @@ impl StorageService for S3StorageService {
                 .await
                 .map(|output| {
                     #[cfg(feature = "log")]
-                    info!("bucket [{}] was created successfully", self.config.bucket);
+                    log::info!("bucket [{}] was created successfully", self.config.bucket);
 
                     #[cfg(feature = "log")]
-                    trace!("{output:?}");
+                    log::trace!("{output:?}");
 
                     #[cfg(feature = "tracing")]
-                    info!(
+                    tracing::info!(
                         remi.service = "s3",
                         bucket = self.config.bucket,
                         "bucket was created successfully"
                     );
 
                     #[cfg(feature = "tracing")]
-                    trace!(remi.service = "s3", bucket = self.config.bucket, "{output:?}");
+                    tracing::trace!(remi.service = "s3", bucket = self.config.bucket, "{output:?}");
                 })
                 .map_err(|x| to_io_error!(x))?;
         }
@@ -169,310 +173,257 @@ impl StorageService for S3StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(name = "remi.s3.open", skip(self), remi.service = "s3", path = tracing::field::display(path.display()))
+        tracing::instrument(
+            name = "remi.s3.blob.open",
+            skip(self, path),
+            path = tracing::field::display(path.as_ref().display())
+        )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
-        Ok(None)
-    }
-
-    /*
-    async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
-        let normalized = self.resolve_path(path.as_ref());
+        let normalized = self.resolve_path(path);
 
         #[cfg(feature = "log")]
-        trace!("opening file {normalized}...");
+        log::trace!("opening file [{normalized}]");
 
-        let obj = self
+        #[cfg(feature = "tracing")]
+        tracing::trace!(remi.service = "s3", path = normalized, "opening file");
+
+        let fut = self
             .client
             .get_object()
-            .bucket(self.config.bucket.clone())
-            .key(normalized)
-            .send()
-            .await;
+            .bucket(&self.config.bucket)
+            .key(&normalized)
+            .send();
 
-        match obj {
-            Ok(obj) => {
+        match fut.await {
+            Ok(object) => {
                 let mut bytes = BytesMut::new();
-                let stream = obj.body;
-
+                let stream = object.body;
                 let mut reader = BufReader::new(stream.into_async_read());
-                reader
-                    .read_exact(&mut bytes)
-                    .await
-                    .map_err(|x| to_io_error!(x))?;
+
+                reader.read_exact(&mut bytes).await.map_err(|x| to_io_error!(x))?;
 
                 Ok(Some(bytes.into()))
             }
 
             Err(e) => {
-                let error = e.into_service_error();
-                if error.is_no_such_key() {
+                let err = e.into_service_error();
+                if err.is_no_such_key() {
                     return Ok(None);
                 }
 
-                Err(to_io_error!(error))
+                Err(to_io_error!(err))
             }
         }
     }
-     */
 
-    /// Returns a [`Blob`] instance of the given file or directory, if it exists.
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.s3.blob.get",
+            skip(self, path),
+            path = tracing::field::display(path.as_ref().display())
+        )
+    )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
-        Ok(None)
+        let normalized = self.resolve_path(path);
+
+        #[cfg(feature = "log")]
+        log::trace!("locating file [{normalized}]");
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(remi.service = "s3", path = normalized, "locating file");
+
+        let fut = self
+            .client
+            .get_object()
+            .bucket(&self.config.bucket)
+            .key(&normalized)
+            .send();
+
+        match fut.await {
+            Ok(object) => {
+                // Get metadata before we read the body
+                let content_type = object.content_type().map(|x| x.to_owned());
+                let last_modified_at = object
+                    .last_modified()
+                    .map(|dt| dt.to_millis().expect("cant convert into millis") as u128);
+
+                // Read the entire body of the object itself
+                let mut bytes = BytesMut::new();
+                let body = object.body;
+                {
+                    let mut reader = BufReader::new(body.into_async_read());
+                    reader.read_exact(&mut bytes).await.map_err(|x| to_io_error!(x))?;
+                }
+
+                let size = bytes.len();
+                Ok(Some(Blob::File(File {
+                    last_modified_at,
+                    content_type,
+                    created_at: None,
+                    is_symlink: false,
+                    data: bytes.into(),
+                    name: normalized.clone(),
+                    path: format!("s3://{normalized}"),
+                    size,
+                })))
+            }
+
+            Err(e) => {
+                let err = e.into_service_error();
+                if err.is_no_such_key() {
+                    return Ok(None);
+                }
+
+                Err(to_io_error!(err))
+            }
+        }
     }
 
-    /// Similar to [`blob`](StorageService::blob) but returns a list of blobs that exist
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.s3.blob.list",
+            skip(self, path),
+            path = tracing::field::display(path.as_ref().display())
+        )
+    )]
     async fn blobs<P: AsRef<Path> + Send>(
         &self,
         path: Option<P>,
         options: Option<ListBlobsRequest>,
     ) -> io::Result<Vec<Blob>> {
-        Ok(vec![])
-    }
-
-    /// Deletes a path.
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
-        Ok(())
-    }
-
-    /// Checks whether or not if a path exists.
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
-        Ok(false)
-    }
-
-    /// Uploads a path.
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-/*
-#[async_trait]
-impl StorageService for S3StorageService {
-    async fn open(&self, path: impl AsRef<Path> + Send) -> Result<Option<Bytes>> {
-        let normalized = self.resolve_path(path.as_ref());
-
-        #[cfg(feature = "log")]
-        trace!("opening file {normalized}...");
-
-        let obj = self
-            .client
-            .get_object()
-            .bucket(self.config.bucket.clone())
-            .key(normalized)
-            .send()
-            .await;
-
-        match obj {
-            Ok(obj) => {
-                let mut bytes = BytesMut::new();
-                let stream = obj.body;
-
-                let mut reader = BufReader::new(stream.into_async_read());
-                reader
-                    .read_exact(&mut bytes)
-                    .await
-                    .map_err(|x| to_io_error!(x))?;
-
-                Ok(Some(bytes.into()))
-            }
-
-            Err(e) => {
-                let error = e.into_service_error();
-                if error.is_no_such_key() {
-                    return Ok(None);
-                }
-
-                Err(to_io_error!(error))
-            }
-        }
-    }
-
-    async fn blob(&self, path: impl AsRef<Path> + Send) -> Result<Option<Blob>> {
-        let path = path.as_ref();
-        let normalized = self.resolve_path(path);
-
-        #[cfg(feature = "log")]
-        trace!("opening file [{normalized}]");
-
-        let obj = self
-            .client
-            .get_object()
-            .bucket(self.config.bucket.clone())
-            .key(normalized.clone())
-            .send()
-            .await;
-
-        match obj {
-            Ok(obj) => {
-                let mut bytes = BytesMut::new();
-                let content_type = obj.content_type().map(|x| x.to_owned());
-                let last_modified_at = obj
-                    .last_modified()
-                    .map(|dt| dt.to_millis().expect("cant convert into millis") as u128);
-
-                let stream = obj.body.into_async_read();
-                let mut reader = BufReader::new(stream);
-                reader
-                    .read_exact(&mut bytes)
-                    .await
-                    .map_err(|x| to_io_error!(x))?;
-
-                let bytes: Bytes = bytes.into();
-                Ok(Some(Blob::File(FileBlob::new(
-                    last_modified_at,
-                    content_type,
-                    None,
-                    false,
-                    "s3".into(),
-                    bytes.clone(),
-                    normalized,
-                    bytes.len(),
-                ))))
-            }
-
-            Err(e) => {
-                let error = e.into_service_error();
-                if error.is_no_such_key() {
-                    return Ok(None);
-                }
-
-                Err(to_io_error!(error))
-            }
-        }
-    }
-
-    async fn blobs(
-        &self,
-        path: Option<impl AsRef<Path> + Send>,
-        options: Option<ListBlobsRequest>,
-    ) -> Result<Vec<Blob>> {
-        let options = match options {
-            Some(req) => req,
-            None => ListBlobsRequest::default(),
-        };
-
-        if path.is_none() {
-            let mut blobs: Vec<Blob> = Vec::new();
-            let mut req = self
+        let options = options.unwrap_or_default();
+        let mut blobs = Vec::new();
+        let mut req = match path {
+            Some(path) => self
                 .client
                 .list_objects_v2()
-                .bucket(self.config.bucket.clone())
-                .max_keys(1000); // TODO: add this in ListBlobsRequest?
+                .bucket(&self.config.bucket)
+                .max_keys(1000)
+                .prefix(self.resolve_path(path)),
 
-            loop {
-                let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
-                let entries = resp.contents();
-
-                #[cfg(feature = "log")]
-                trace!("found {} entries", entries.len());
-
-                for entry in entries {
-                    let name = entry.key();
-                    if name.is_none() {
-                        #[cfg(feature = "log")]
-                        trace!("skipping entry due to no name");
-
-                        continue;
-                    }
-
-                    let name = name.unwrap();
-                    if options.is_excluded(name) {
-                        #[cfg(feature = "log")]
-                        debug!("S3 object with key [{name}] is being excluded from output");
-                    }
-
-                    match self.s3_obj_to_blob(entry).await {
-                        Ok(Some(blob)) => {
-                            blobs.push(blob);
-                        }
-
-                        #[cfg(feature = "log")]
-                        Err(e) => {
-                            warn!("skipping error [{e}] when listing objects, object [{name:?}] will not be present in the final result");
-                            continue;
-                        }
-
-                        #[cfg(not(feature = "log"))]
-                        Err(_) => continue,
-                        _ => continue,
-                    }
-                }
-
-                if let Some(token) = resp.continuation_token() {
-                    req = req.clone().continuation_token(token);
-                } else {
-                    break;
-                }
-            }
-
-            return Ok(blobs);
-        }
-
-        let path = path.unwrap();
-        let resolved = self.resolve_path(path);
-
-        let mut blobs: Vec<Blob> = Vec::new();
-        let mut req = self
-            .client
-            .list_objects_v2()
-            .bucket(self.config.bucket.clone())
-            .max_keys(1000) // TODO: add this in ListBlobsRequest?
-            .set_prefix(Some(resolved));
+            None => self.client.list_objects_v2().bucket(&self.config.bucket).max_keys(1000),
+        };
 
         loop {
             let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
             let entries = resp.contents();
 
-            #[cfg(feature = "log")]
-            trace!("found {} entries", entries.len());
-
             for entry in entries {
-                let name = entry.key();
-                if name.is_none() {
+                let Some(name) = entry.key() else {
                     #[cfg(feature = "log")]
-                    trace!("skipping entry due to no name");
+                    log::warn!("skipping entry due to no name");
+
+                    #[cfg(feature = "log")]
+                    log::trace!("{entry:?}");
+
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(remi.service = "s3", "skipping entry due to no name");
+
+                    #[cfg(feature = "tracing")]
+                    tracing::trace!("{entry:?}");
+
+                    continue;
+                };
+
+                if options.is_excluded(name) {
+                    #[cfg(feature = "log")]
+                    log::warn!("excluding entry [{name}] due to options passed in");
+
+                    #[cfg(feature = "log")]
+                    log::trace!("{entry:?}");
+
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(remi.service = "s3", name, "skipping entry due to no name");
+
+                    #[cfg(feature = "tracing")]
+                    tracing::trace!("{entry:?}");
 
                     continue;
                 }
 
-                let name = name.unwrap();
-                if options.is_excluded(name) {
-                    #[cfg(feature = "log")]
-                    debug!("S3 object with key [{name}] is being excluded from output");
+                // most files include a '.'
+                if !name.ends_with('/') && name.contains('.') {
+                    let idx = name.chars().position(|x| x == '.');
+                    if let Some(idx) = idx {
+                        let ext = &name[idx + 1..];
+                        if !options.is_ext_allowed(ext) {
+                            #[cfg(feature = "log")]
+                            log::warn!("excluding entry [{name}] due to extension [{ext}] not being allowed");
+
+                            #[cfg(feature = "log")]
+                            log::trace!("{entry:?}");
+
+                            #[cfg(feature = "tracing")]
+                            tracing::warn!(
+                                remi.service = "s3",
+                                name,
+                                ext = &ext,
+                                "skipping entry due to extension not being allowed"
+                            );
+
+                            #[cfg(feature = "tracing")]
+                            tracing::trace!("{entry:?}");
+
+                            continue;
+                        }
+                    }
                 }
 
                 match self.s3_obj_to_blob(entry).await {
-                    Ok(Some(blob)) => {
-                        blobs.push(blob);
-                    }
+                    Ok(Some(blob)) => blobs.push(blob),
+                    Ok(None) => continue,
 
-                    #[cfg(feature = "log")]
+                    #[allow(unused)]
                     Err(e) => {
-                        warn!("skipping error [{e}] when listing objects, object [{name:?}] will not be present in the final result");
+                        #[cfg(feature = "log")]
+                        log::warn!("received SDK error when trying to getting blob information: {e}");
+
+                        #[cfg(feature = "log")]
+                        log::trace!("{entry:?}");
+
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(
+                            remi.service = "s3",
+                            name,
+                            error = tracing::field::display(e),
+                            "received SDK error when trying to getting blob information"
+                        );
+
+                        #[cfg(feature = "tracing")]
+                        tracing::trace!("{entry:?}");
+
                         continue;
                     }
-
-                    #[cfg(not(feature = "log"))]
-                    Err(_) => continue,
-                    _ => continue,
                 }
             }
 
-            if let Some(token) = resp.continuation_token() {
-                req = req.clone().continuation_token(token);
-            } else {
-                break;
+            match resp.continuation_token() {
+                Some(token) => {
+                    req = req.clone().continuation_token(token);
+                }
+
+                None => break,
             }
         }
 
         Ok(blobs)
     }
 
-    async fn delete(&self, path: impl AsRef<Path> + Send) -> Result<()> {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.s3.blob.delete",
+            skip(self, path),
+            path = tracing::field::display(path.as_ref().display())
+        )
+    )]
+    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
         self.client
             .delete_object()
-            .bucket(self.config.bucket.clone())
+            .bucket(&self.config.bucket)
             .key(self.resolve_path(path))
             .send()
             .await
@@ -480,28 +431,30 @@ impl StorageService for S3StorageService {
             .map_err(|x| to_io_error!(x))
     }
 
-    async fn exists(&self, path: impl AsRef<Path> + Send) -> Result<bool> {
-        let res = self
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.s3.blob.exists",
+            skip(self, path),
+            path = tracing::field::display(path.as_ref().display())
+        )
+    )]
+    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
+        let fut = self
             .client
             .head_object()
-            .bucket(self.config.bucket.clone())
+            .bucket(&self.config.bucket)
             .key(self.resolve_path(path))
-            .send()
-            .await
-            .map(|resp| {
-                // If the object has a delete marker, we should return
-                // false for this.
-                if Some(true) == resp.delete_marker() {
-                    return false;
+            .send();
+
+        match fut.await {
+            Ok(res) => {
+                if res.delete_marker().is_some() {
+                    return Ok(false);
                 }
 
-                // Otherwise, the header was present (in the case of None)
-                // or it was detected to not be a delete marker (false).
-                true
-            });
-
-        match res {
-            Ok(res) => Ok(res),
+                Ok(true)
+            }
             Err(e) => {
                 let inner = e.into_service_error();
                 if inner.is_not_found() {
@@ -513,21 +466,36 @@ impl StorageService for S3StorageService {
         }
     }
 
-    async fn upload(&self, path: impl AsRef<Path> + Send, options: UploadRequest) -> Result<()> {
-        let path = self.resolve_path(path);
-        let content_type = options
-            .content_type
-            .unwrap_or("application/octet-stream".into());
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.s3.blob.upload",
+            skip(self, path, options),
+            path = tracing::field::display(path.as_ref().display())
+        )
+    )]
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
+        let normalized = self.resolve_path(path);
+        let content_type = options.content_type.unwrap_or(DEFAULT_CONTENT_TYPE.into());
 
         #[cfg(feature = "log")]
-        trace!("uploading object [{path}] with content type [{content_type:?}]");
+        log::trace!("uploading object [{normalized}] with content type [{content_type}]");
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(
+            remi.service = "s3",
+            path = normalized,
+            content_type,
+            "uploading object with content type to Amazon S3"
+        );
+
         let len = options.data.len();
-        let stream: ByteStream = options.data.into();
+        let stream = ByteStream::from(options.data);
 
         self.client
             .put_object()
             .bucket(self.config.bucket.clone())
-            .key(path)
+            .key(normalized)
             .acl(
                 self.config
                     .default_object_acl
@@ -536,7 +504,7 @@ impl StorageService for S3StorageService {
             )
             .body(stream)
             .content_type(content_type)
-            .content_length(len as i64)
+            .content_length(len.try_into().expect("unable to convert usize ~> i64"))
             .set_metadata(match options.metadata.is_empty() {
                 true => None,
                 false => Some(options.metadata.clone()),
@@ -547,4 +515,3 @@ impl StorageService for S3StorageService {
             .map_err(|x| to_io_error!(x))
     }
 }
-*/

@@ -22,9 +22,7 @@
 use crate::{default_resolver, Config, ContentTypeResolver};
 use async_trait::async_trait;
 use bytes::Bytes;
-use remi::{
-    Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest,
-};
+use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
 use std::{
     io,
     path::{Path, PathBuf},
@@ -66,10 +64,7 @@ impl StorageService {
     }
 
     /// Updates the given [`ContentTypeResolver`] to something else.
-    pub fn with_resolver<R: ContentTypeResolver + 'static>(
-        mut self,
-        resolver: R,
-    ) -> StorageService {
+    pub fn with_resolver<R: ContentTypeResolver + 'static>(mut self, resolver: R) -> StorageService {
         self.resolver = Arc::new(Box::new(resolver));
         self
     }
@@ -81,10 +76,7 @@ impl StorageService {
     ///   the directory was found. Otherwise, it'll use the current directory.
     ///
     /// * If the path starts with `~/`, then it will resolve from the home directory from [`dirs::home_dir`].
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(name = "remi.filesystem.normalize", skip_all)
-    )]
+    #[cfg_attr(feature = "tracing", instrument(name = "remi.filesystem.normalize", skip_all))]
     pub fn normalize<P: AsRef<Path>>(&self, path: P) -> io::Result<Option<PathBuf>> {
         let path = path.as_ref();
 
@@ -118,11 +110,7 @@ impl StorageService {
                 return Ok(None);
             };
 
-            let normalized = format!(
-                "{}/{}",
-                directory.display(),
-                path.strip_prefix("./").unwrap().display()
-            );
+            let normalized = format!("{}/{}", directory.display(), path.strip_prefix("./").unwrap().display());
 
             #[cfg(feature = "tracing")]
             tracing::info!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
@@ -148,11 +136,7 @@ impl StorageService {
                 return Ok(None);
             };
 
-            let normalized = format!(
-                "{}/{}",
-                homedir.display(),
-                path.strip_prefix("~/").unwrap().display()
-            );
+            let normalized = format!("{}/{}", homedir.display(), path.strip_prefix("~/").unwrap().display());
 
             #[cfg(feature = "tracing")]
             tracing::info!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
@@ -253,6 +237,14 @@ impl StorageService {
 impl RemiStorageService for StorageService {
     const NAME: &'static str = "remi:fs";
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            name = "remi.filesystem.open",
+            skip_all,
+            directory = tracing::field::display(self.config.directory.display()),
+        )
+    )]
     async fn init(&self) -> io::Result<()> {
         if !self.config.directory.try_exists()? {
             #[cfg(feature = "tracing")]
@@ -274,10 +266,7 @@ impl RemiStorageService for StorageService {
         if !self.config.directory.is_dir() {
             return Err(Error::new(
                 io::ErrorKind::InvalidData,
-                format!(
-                    "path [{}] is a file, not a directory",
-                    self.config.directory.display()
-                ),
+                format!("path [{}] is a file, not a directory", self.config.directory.display()),
             ));
         }
 
@@ -286,7 +275,11 @@ impl RemiStorageService for StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        instrument(name = "remi.filesystem.open", skip_all)
+        instrument(
+            name = "remi.filesystem.open",
+            skip_all,
+            path = tracing::field::display(path.display())
+        )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
         let path = path.as_ref();
@@ -299,10 +292,7 @@ impl RemiStorageService for StorageService {
             );
 
             #[cfg(feature = "log")]
-            log::warn!(
-                "path given [{}] was a file, not a directory",
-                path.display()
-            );
+            log::warn!("path given [{}] was a file, not a directory", path.display());
 
             return Ok(None);
         };
@@ -357,7 +347,11 @@ impl RemiStorageService for StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        instrument(name = "remi.filesystem.blob", skip_all)
+        instrument(
+            name = "remi.filesystem.blob",
+            skip_all,
+            path = tracing::field::display(path.display())
+        )
     )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
         let path = path.as_ref();
@@ -370,10 +364,7 @@ impl RemiStorageService for StorageService {
             );
 
             #[cfg(feature = "log")]
-            log::warn!(
-                "path given [{}] was a file, not a directory",
-                path.display()
-            );
+            log::warn!("path given [{}] was a file, not a directory", path.display());
 
             return Ok(None);
         };
@@ -383,9 +374,7 @@ impl RemiStorageService for StorageService {
             let created_at = match metadata.created() {
                 Ok(sys) => Some(
                     sys.duration_since(SystemTime::UNIX_EPOCH)
-                        .map_err(|_| {
-                            io::Error::new(io::ErrorKind::InvalidData, "clock went backwards?!")
-                        })?
+                        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "clock went backwards?!"))?
                         .as_millis(),
                 ),
 
@@ -404,7 +393,11 @@ impl RemiStorageService for StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        instrument(name = "remi.filesystem.blobs", skip_all)
+        instrument(
+            name = "remi.filesystem.blobs",
+            skip_all,
+            path = tracing::field::display(path.display())
+        )
     )]
     async fn blobs<P: AsRef<Path> + Send>(
         &self,
@@ -427,10 +420,7 @@ impl RemiStorageService for StorageService {
             );
 
             #[cfg(feature = "log")]
-            log::warn!(
-                "path given [{}] was a file, not a directory",
-                path.display()
-            );
+            log::warn!("path given [{}] was a file, not a directory", path.display());
 
             return Ok(vec![]);
         };
@@ -444,10 +434,7 @@ impl RemiStorageService for StorageService {
             );
 
             #[cfg(feature = "log")]
-            log::warn!(
-                "path given [{}] was a file, not a directory",
-                path.display()
-            );
+            log::warn!("path given [{}] was a file, not a directory", path.display());
 
             return Ok(vec![]);
         }
@@ -477,9 +464,7 @@ impl RemiStorageService for StorageService {
                         Ok(sys) => Some(
                             sys.created()?
                                 .duration_since(SystemTime::UNIX_EPOCH)
-                                .map_err(|_| {
-                                    io::Error::new(io::ErrorKind::Other, "clock went backwards?!")
-                                })?
+                                .map_err(|_| io::Error::new(io::ErrorKind::Other, "clock went backwards?!"))?
                                 .as_millis(),
                         ),
 
@@ -495,9 +480,7 @@ impl RemiStorageService for StorageService {
 
             let path = entry.path();
             let ext_allowed = match path.extension() {
-                Some(s) => {
-                    options.is_ext_allowed(s.to_str().expect("valid utf-8 in path extension"))
-                }
+                Some(s) => options.is_ext_allowed(s.to_str().expect("valid utf-8 in path extension")),
 
                 None => true,
             };
@@ -514,7 +497,11 @@ impl RemiStorageService for StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        instrument(name = "remi.filesystem.delete", skip_all)
+        instrument(
+            name = "remi.filesystem.delete",
+            skip_all,
+            path = tracing::field::display(path.display())
+        )
     )]
     async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
         let path = path.as_ref();
@@ -555,7 +542,11 @@ impl RemiStorageService for StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        instrument(name = "remi.filesystem.exists", skip_all)
+        instrument(
+            name = "remi.filesystem.exists",
+            skip_all,
+            path = tracing::field::display(path.display())
+        )
     )]
     async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
         let path = path.as_ref();
@@ -571,13 +562,13 @@ impl RemiStorageService for StorageService {
 
     #[cfg_attr(
         feature = "tracing",
-        instrument(name = "remi.filesystem.upload", skip_all)
+        instrument(
+            name = "remi.filesystem.upload",
+            skip_all,
+            path = tracing::field::display(path.display())
+        )
     )]
-    async fn upload<P: AsRef<Path> + Send>(
-        &self,
-        path: P,
-        options: UploadRequest,
-    ) -> io::Result<()> {
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
         let path = path.as_ref();
         let Some(path) = self.normalize(path)? else {
             return Err(io::Error::new(
@@ -595,10 +586,7 @@ impl RemiStorageService for StorageService {
             );
 
             #[cfg(feature = "log")]
-            log::trace!(
-                "contents in given path [{}] will be overwritten",
-                path.display()
-            );
+            log::trace!("contents in given path [{}] will be overwritten", path.display());
         }
 
         // ensure that the parent exists, if not, it'll attempt
@@ -607,11 +595,7 @@ impl RemiStorageService for StorageService {
             fs::create_dir_all(parent).await?;
         }
 
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-            .await?;
+        let mut file = fs::OpenOptions::new().write(true).create_new(true).open(&path).await?;
 
         file.write_all(options.data.as_ref()).await?;
         file.flush().await?;

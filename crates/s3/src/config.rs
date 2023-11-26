@@ -188,7 +188,7 @@ impl S3StorageConfig {
 mod __serde {
     pub mod region {
         use aws_sdk_s3::config::Region;
-        use serde::{de::Deserializer, ser::Serializer};
+        use serde::{de::Deserializer, ser::Serializer, Deserialize};
         use std::borrow::Cow;
 
         pub fn serialize<S: Serializer>(region: &Option<Region>, serializer: S) -> Result<S::Ok, S::Error> {
