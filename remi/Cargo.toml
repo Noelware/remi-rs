@@ -22,22 +22,14 @@
 [package]
 name = "remi"
 description = "🐻‍❄️🧶 Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers"
-version = "0.0.0-devel.0"
-repository = "https://github.com/Noelware/remi-rs/tree/master/remi"
-license = "MIT"
-edition = "2021"
-rust-version = "1.67.0"
-# homepage = "https://docs.noelware.org/libraries/rust/remi-rs/latest/remi"
-
-[features]
-default = ["fs"]
-gridfs = ["remi-gridfs"]
-serde = ["remi-fs/serde", "remi-s3/serde", "remi-gridfs/serde"]
-s3 = ["remi-s3"]
-fs = ["remi-fs"]
+version.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
-remi-gridfs = { version = "0.0.0-devel.0", path = "../remi_support/gridfs", default-features = false, optional = true }
-remi-core = { version = "0.0.0-devel.0", path = "../remi_core" }
-remi-fs = { version = "0.0.0-devel.0", path = "../remi_support/fs", default-features = false, optional = true }
-remi-s3 = { version = "0.0.0-devel.0", path = "../remi_support/s3", default-features = false, optional = true }
+async-trait = "0.1.73"
+bytes = "1.5.0"
+dirs = "5.0.1"
+futures = "0.3.28"

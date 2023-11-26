@@ -19,9 +19,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-use_field_init_shorthand = true
-match_arm_leading_pipes = "Preserve"
-use_try_shorthand = true
-newline_style = "Unix" # keep it consistent
-max_width = 120
-edition = "2021"
+[toolchain]
+channel = "stable"
+profile = "minimal"
+components = [
+    "rustc",
+    "cargo",
+    "rust-analyzer",
+    "rust-src",
+    "rust-std",
+    "clippy",
+    "rustfmt"
+]
