@@ -34,7 +34,7 @@ default = []
 serde = ["dep:serde"]
 
 [dependencies]
-async-trait = "0.1.74"
+async-trait = "0.1.75"
 bytes = "1.5.0"
 derive_builder = "0.12.0"
 log = "0.4.20"
