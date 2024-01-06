@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-# Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+# Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 {
-  description = "🐻‍❄️💐 Easy, self-hostable, and flexible image host made in Rust";
+  description = "🐻‍❄️🧶 Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
@@ -35,7 +35,6 @@
       url = "github:ipetkov/crane";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
   };
@@ -79,7 +78,7 @@
       # builds only the dependencies
       artifacts = craneLib.buildDepsOnly (commonArgs
         // {
-          pname = "ume-deps";
+          pname = "remi-deps";
         });
 
       # runs `cargo clippy`
@@ -87,19 +86,12 @@
         // {
           inherit artifacts;
 
-          pname = "ume-clippy";
-        });
-
-      # build the ume cli and server
-      ume = craneLib.buildPackage (commonArgs
-        // {
-          inherit artifacts;
+          pname = "remi-clippy";
         });
     in {
-      packages.default = ume;
       checks = {
         # checks for `nix flake check`
-        inherit ume clippy;
+        inherit clippy;
       };
 
       devShells.default = pkgs.mkShell {
@@ -111,7 +103,6 @@
         buildInputs = with pkgs; [
           cargo-expand
           openssl
-          cargo
           rust
         ];
 

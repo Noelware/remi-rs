@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-// Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -124,7 +124,6 @@ pub struct UploadRequest {
     /// Extra metadata to insert. Metadata can be queried when blobs
     /// are queried.
     ///
-    /// - Gridfs: This will be inserted with the file metadata.
     /// - Filesystem: This will not do anything.
     /// - Azure: This will not do anything.
     /// - GCS: This will not do anything.

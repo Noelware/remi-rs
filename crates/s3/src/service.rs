@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-// Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ use aws_sdk_s3::{
     Client, Config,
 };
 use bytes::{Bytes, BytesMut};
-use remi::{Blob, Directory, File, ListBlobsRequest, StorageService, UploadRequest};
+use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
 use std::{io, path::Path};
 use tokio::io::{AsyncReadExt, BufReader};
 
@@ -39,36 +39,39 @@ macro_rules! to_io_error {
     };
 }
 
+#[deprecated(since = "0.5.0", note = "`S3StorageService` has been renamed to `StorageService`")]
+pub type S3StorageService = StorageService;
+
 /// Represents an implementation of [`StorageService`] for Amazon Simple Storage Service.
 #[derive(Debug, Clone)]
-pub struct S3StorageService {
+pub struct StorageService {
     client: Client,
     config: S3StorageConfig,
 }
 
-impl S3StorageService {
-    /// Creates a [`S3StorageService`] with a given storage service configuration.
-    pub fn new(config: S3StorageConfig) -> S3StorageService {
-        let client = Client::from_conf(config.clone().into());
-        S3StorageService { client, config }
+impl StorageService {
+    /// Creates a [`StorageService`] with a given storage service configuration.
+    pub fn new(config: S3StorageConfig) -> StorageService {
+        let client = Client::from_conf(From::from(config.clone()));
+        StorageService { client, config }
     }
 
-    /// Creates a new [`S3StorageService`] with a implementator of [`Config`] that can
+    /// Creates a new [`StorageService`] with a implementator of [`Config`] that can
     /// represent the AWS SDK S3 configuration that you want.
-    pub fn with_sdk_conf<I: Into<Config>>(config: I) -> S3StorageService {
+    pub fn with_sdk_conf<I: Into<Config>>(config: I) -> StorageService {
         let client = Client::from_conf(config.into());
-        S3StorageService {
+        StorageService {
             client,
             config: S3StorageConfig::default(),
         }
     }
 
     /// Overwrites a [`S3StorageConfig`] instance on this service without modifying the
-    /// actual SDK client. This is useful if you used the [`S3StorageService::with_sdk_conf`]
+    /// actual SDK client. This is useful if you used the [`StorageService::with_sdk_conf`]
     /// method. If you wish to modify the SDK client with a [`S3StorageConfig`],
     /// then use the [`S3StorageConfig::new`] method instead.
-    pub fn with_config(self, config: S3StorageConfig) -> S3StorageService {
-        S3StorageService {
+    pub fn with_config(self, config: S3StorageConfig) -> StorageService {
+        StorageService {
             client: self.client,
             config,
         }
@@ -96,7 +99,7 @@ impl S3StorageService {
 }
 
 #[async_trait]
-impl StorageService for S3StorageService {
+impl RemiStorageService for StorageService {
     const NAME: &'static str = "remi:s3";
 
     #[cfg_attr(
@@ -104,7 +107,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.init",
             skip_all,
-            bucket = self.config.bucket
+            fields(
+                bucket = self.config.bucket,
+                remi.service = "s3"
+            )
         )
     )]
     async fn init(&self) -> io::Result<()> {
@@ -176,7 +182,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.blob.open",
             skip(self, path),
-            path = tracing::field::display(path.as_ref().display())
+            fields(
+                remi.service = "s3",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
@@ -222,7 +231,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.blob.get",
             skip(self, path),
-            path = tracing::field::display(path.as_ref().display())
+            fields(
+                remi.service = "s3",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
@@ -286,7 +298,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.blob.list",
             skip(self, path),
-            path = tracing::field::display(path.as_ref().display())
+            fields(
+                remi.service = "s3",
+                path = ?path.as_ref().map(|path| path.as_ref().display())
+            )
         )
     )]
     async fn blobs<P: AsRef<Path> + Send>(
@@ -417,7 +432,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.blob.delete",
             skip(self, path),
-            path = tracing::field::display(path.as_ref().display())
+            fields(
+                remi.service = "s3",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
@@ -436,7 +454,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.blob.exists",
             skip(self, path),
-            path = tracing::field::display(path.as_ref().display())
+            fields(
+                remi.service = "s3",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
@@ -471,7 +492,10 @@ impl StorageService for S3StorageService {
         tracing::instrument(
             name = "remi.s3.blob.upload",
             skip(self, path, options),
-            path = tracing::field::display(path.as_ref().display())
+            fields(
+                remi.service = "s3",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
@@ -515,3 +539,6 @@ impl StorageService for S3StorageService {
             .map_err(|x| to_io_error!(x))
     }
 }
+
+#[cfg(test)]
+mod tests {}

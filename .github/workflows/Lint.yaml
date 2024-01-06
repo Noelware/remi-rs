@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-# Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+# Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,7 @@ jobs:
                 runner: [ubuntu-latest, windows-latest, macos-latest]
         steps:
             - name: Checkout repository
-              uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+              uses: actions/checkout@v4
 
             - name: Setup Rust toolchain
               uses: dtolnay/rust-toolchain@master
@@ -77,7 +77,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout repository
-              uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+              uses: actions/checkout@v4
 
             - name: Setup Rust toolchain
               uses: dtolnay/rust-toolchain@master

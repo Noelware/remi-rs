@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-// Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,11 +19,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc = include_str!("../README.md")]
 
-use async_trait::async_trait;
-use bytes::Bytes;
 use std::{io, path::Path};
+
+// re-export (just in case!~)
+pub use async_trait::async_trait;
+pub use bytes::Bytes;
 
 mod blob;
 mod options;
@@ -40,10 +43,7 @@ pub trait StorageService: Send + Sync {
     const NAME: &'static str;
 
     /// Returns the name of this [`StorageService`].
-    #[deprecated(
-        since = "0.5.0",
-        note = "use Self::NAME instead of the name() function"
-    )]
+    #[deprecated(since = "0.5.0", note = "use Self::NAME instead of the name() function")]
     fn name(&self) -> &'static str {
         Self::NAME
     }
@@ -74,9 +74,5 @@ pub trait StorageService: Send + Sync {
     async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool>;
 
     /// Uploads a path.
-    async fn upload<P: AsRef<Path> + Send>(
-        &self,
-        path: P,
-        options: UploadRequest,
-    ) -> io::Result<()>;
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()>;
 }

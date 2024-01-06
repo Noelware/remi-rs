@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-// Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,13 @@ where
 /// This doesn't include checking for JSON or YAML formats (if the respected crate features are enabled),
 /// please use the new [`default_resolver`] function to do so.
 #[derive(Debug, Clone, Copy)]
+#[deprecated(
+    since = "0.5.0",
+    note = "please use the new `default_resolver` fn to implement `ContentTypeResolver`"
+)]
 pub struct DefaultContentTypeResolver;
+
+#[allow(deprecated)]
 impl ContentTypeResolver for DefaultContentTypeResolver {
     #[cfg(not(feature = "file-format"))]
     fn resolve(&self, _bytes: &[u8]) -> String {
@@ -56,11 +62,7 @@ impl ContentTypeResolver for DefaultContentTypeResolver {
     fn resolve(&self, bytes: &[u8]) -> String {
         infer::get(bytes)
             .map(|ty| ty.mime_type().to_owned())
-            .unwrap_or(
-                file_format::FileFormat::from_bytes(bytes)
-                    .media_type()
-                    .to_owned(),
-            )
+            .unwrap_or(file_format::FileFormat::from_bytes(bytes).media_type().to_owned())
     }
 }
 
@@ -81,11 +83,7 @@ pub fn default_resolver(data: &[u8]) -> String {
 
     infer::get(data)
         .map(|ty| ty.mime_type().to_owned())
-        .unwrap_or(
-            file_format::FileFormat::from_bytes(data)
-                .media_type()
-                .to_owned(),
-        )
+        .unwrap_or(file_format::FileFormat::from_bytes(data).media_type().to_owned())
 }
 
 /// A default implementation of a [`ContentTypeResolver`].

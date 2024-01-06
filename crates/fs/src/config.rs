@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-// Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,10 +21,7 @@
 
 use std::path::{Path, PathBuf};
 
-#[deprecated(
-    since = "0.5.0",
-    note = "`FilesystemStorageConfig` was renamed to `Config`"
-)]
+#[deprecated(since = "0.5.0", note = "`FilesystemStorageConfig` was renamed to `Config`")]
 pub type FilesystemStorageConfig = Config;
 
 /// Represents the main configuration of using the `StorageService` implementation of remi-fs.

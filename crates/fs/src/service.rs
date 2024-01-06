@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-// Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -242,7 +242,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.open",
             skip_all,
-            directory = tracing::field::display(self.config.directory.display()),
+            fields(
+                remi.service = "fs",
+                directory = %self.config.directory.display()
+            )
         )
     )]
     async fn init(&self) -> io::Result<()> {
@@ -278,7 +281,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.open",
             skip_all,
-            path = tracing::field::display(path.display())
+            fields(
+                remi.service = "fs",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
@@ -350,7 +356,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.blob",
             skip_all,
-            path = tracing::field::display(path.display())
+            fields(
+                remi.service = "fs",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
@@ -396,7 +405,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.blobs",
             skip_all,
-            path = tracing::field::display(path.display())
+            fields(
+                remi.service = "fs",
+                path = ?path.as_ref().map(|path| path.as_ref().display())
+            )
         )
     )]
     async fn blobs<P: AsRef<Path> + Send>(
@@ -500,7 +512,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.delete",
             skip_all,
-            path = tracing::field::display(path.display())
+            fields(
+                remi.service = "fs",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
@@ -545,7 +560,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.exists",
             skip_all,
-            path = tracing::field::display(path.display())
+            fields(
+                remi.service = "fs",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
@@ -565,7 +583,10 @@ impl RemiStorageService for StorageService {
         instrument(
             name = "remi.filesystem.upload",
             skip_all,
-            path = tracing::field::display(path.display())
+            fields(
+                remi.service = "fs",
+                path = %path.as_ref().display()
+            )
         )
     )]
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
