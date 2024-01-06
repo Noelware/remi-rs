@@ -29,5 +29,5 @@ components = [
     "rust-src",
     "rust-std",
     "clippy",
-    "rustfmt"
+    "rustfmt",
 ]
