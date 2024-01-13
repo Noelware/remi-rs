@@ -85,7 +85,7 @@ fn serialize_selection_criteria<S: ::serde::ser::Serializer>(
         }
 
         match value {
-            SelectionCriteria::ReadPreference(rp) => return ReadPreference::serialize(&rp, serializer),
+            SelectionCriteria::ReadPreference(rp) => return ReadPreference::serialize(rp, serializer),
             _ => unimplemented!(),
         }
     }

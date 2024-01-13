@@ -70,15 +70,13 @@ impl ContentTypeResolver for DefaultContentTypeResolver {
 #[cfg(feature = "file-format")]
 pub fn default_resolver(data: &[u8]) -> String {
     #[cfg(feature = "serde_json")]
-    match serde_json::from_slice::<()>(data) {
-        Ok(_) => return String::from("application/json; charset=utf-8"),
-        Err(_) => {}
+    if let Ok(_) = serde_json::from_slice::<()>(data) {
+        return String::from("application/json; charset=utf-8");
     }
 
     #[cfg(feature = "serde_yaml")]
-    match serde_yaml::from_slice::<()>(data) {
-        Ok(_) => return String::from("application/yaml; charset=utf-8"),
-        Err(_) => {}
+    if let Ok(_) = serde_yaml::from_slice::<()>(data) {
+        return String::from("application/yaml; charset=utf-8");
     }
 
     infer::get(data)
@@ -90,15 +88,13 @@ pub fn default_resolver(data: &[u8]) -> String {
 #[cfg(not(feature = "file-format"))]
 pub fn default_resolver(data: &[u8]) -> String {
     #[cfg(feature = "serde_json")]
-    match serde_json::from_slice(data) {
-        Ok(_) => String::from("application/json; charset=utf-8"),
-        Err(_) => {}
+    if let Ok(_) = serde_json::from_slice::<()>(data) {
+        return String::from("application/json; charset=utf-8");
     }
 
     #[cfg(feature = "serde_yaml")]
-    match serde_yaml::from_slice(data) {
-        Ok(_) => String::from("application/yaml; charset=utf-8"),
-        Err(_) => {}
+    if let Ok(_) = serde_yaml::from_slice::<()>(data) {
+        return String::from("application/yaml; charset=utf-8");
     }
 
     DEFAULT_CONTENT_TYPE.into()
