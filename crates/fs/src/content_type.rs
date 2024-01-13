@@ -70,12 +70,12 @@ impl ContentTypeResolver for DefaultContentTypeResolver {
 #[cfg(feature = "file-format")]
 pub fn default_resolver(data: &[u8]) -> String {
     #[cfg(feature = "serde_json")]
-    if let Ok(_) = serde_json::from_slice::<()>(data) {
+    if serde_json::from_slice::<()>(data).is_ok() {
         return String::from("application/json; charset=utf-8");
     }
 
     #[cfg(feature = "serde_yaml")]
-    if let Ok(_) = serde_yaml::from_slice::<()>(data) {
+    if serde_yaml::from_slice::<()>(data).is_ok() {
         return String::from("application/yaml; charset=utf-8");
     }
 
@@ -88,12 +88,12 @@ pub fn default_resolver(data: &[u8]) -> String {
 #[cfg(not(feature = "file-format"))]
 pub fn default_resolver(data: &[u8]) -> String {
     #[cfg(feature = "serde_json")]
-    if let Ok(_) = serde_json::from_slice::<()>(data) {
+    if serde_json::from_slice::<()>(data).is_ok() {
         return String::from("application/json; charset=utf-8");
     }
 
     #[cfg(feature = "serde_yaml")]
-    if let Ok(_) = serde_yaml::from_slice::<()>(data) {
+    if serde_yaml::from_slice::<()>(data).is_ok() {
         return String::from("application/yaml; charset=utf-8");
     }
 
