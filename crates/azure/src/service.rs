@@ -184,10 +184,6 @@ mod tests {
             return;
         }
 
-        // testcontainers uses 'log' to output information, so we use tracing_subscriber
-        // with `tracing_log` to output to stdout (useful for debugging)
-        crate::setup_log_pipeline();
-
         let cli = Cli::default();
         let container = cli.run((
             get_azurite_container(),
