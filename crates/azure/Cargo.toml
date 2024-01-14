@@ -19,13 +19,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-[workspace]
-resolver = "2"
-members = ["crates/*", "remi"]
+[package]
+name = "remi-azure"
+description = "🐻‍❄️🧶 Azure Blob Storage implementation of `remi-rs`"
+version.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
-[workspace.package]
-version = "0.5.0"
-repository = "https://github.com/Noelware/remi-rs"
-license = "MIT"
-edition = "2021"
-rust-version = "1.71.0"
+[features]
+default = ["serde"]
+tracing = ["dep:tracing"]
+serde = ["dep:serde"]
+log = ["dep:log"]
+
+[dependencies]
+async-trait = "0.1.77"
+azure_core = "0.19.0"
+azure_storage = "0.19.0"
+azure_storage_blobs = "0.19.0"
+bytes = "1.5.0"
+log = { version = "0.4.20", optional = true }
+remi = { path = "../../remi" }
+serde = { version = "1.0.195", features = ["derive"], optional = true }
+tracing = { version = "0.1.40", optional = true }
+
+[dev-dependencies]
+testcontainers = "0.15.0"
+tokio = { version = "1.35.1", features = ["macros", "rt"] }
+tracing-log = "0.2.0"
+tracing-subscriber = "0.3.18"
+which = "5.0.0"
+
+[package.metadata.docs.rs]
+all-features = true

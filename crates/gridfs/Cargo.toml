@@ -44,3 +44,6 @@ remi = { path = "../../remi" }
 serde = { version = "1.0.195", features = ["derive"], optional = true }
 tokio-util = "0.7.10"
 tracing = { version = "0.1.40", optional = true }
+
+[package.metadata.docs.rs]
+all-features = true
