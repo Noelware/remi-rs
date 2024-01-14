@@ -74,11 +74,11 @@ impl ListBlobsRequest {
     /// Checks if the given item is excluded or not.
     ///
     /// ## Example
-    /// ```
-    /// # use remi_core::ListBlobsRequest;
+    /// ```rust,ignore
+    /// # use remi::ListBlobsRequest;
     /// #
     /// let mut req = ListBlobsRequest::default();
-    /// let _ = req.exclude(&["hello.txt"]);
+    /// let _ = req.clone().exclude(&["hello.txt"]);
     ///
     /// assert!(!req.is_excluded("world.txt"));
     /// assert!(req.is_excluded("hello.txt"));
@@ -92,11 +92,11 @@ impl ListBlobsRequest {
     /// it will try to check if it exists or not.
     ///
     /// ## Example
-    /// ```
-    /// # use remi_core::ListBlobsRequest;
+    /// ```rust,ignore
+    /// # use remi::ListBlobsRequest;
     /// #
     /// let mut req = ListBlobsRequest::default();
-    /// let _ = req.extensions(&[".txt"]);
+    /// let _ = req.clone().extensions(&[".txt"]);
     ///
     /// assert!(!req.is_ext_allowed(".json"));
     /// assert!(req.is_ext_allowed(".txt"));
