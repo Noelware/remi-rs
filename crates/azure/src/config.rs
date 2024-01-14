@@ -78,13 +78,12 @@ impl From<StorageConfig> for ContainerClient {
 #[cfg(feature = "serde")]
 pub(crate) mod azure_serde {
     pub(crate) mod cloud_location {
-        use std::collections::HashMap;
-
         use azure_storage::CloudLocation;
         use serde::{
             ser::{SerializeMap, Serializer},
             Deserialize, Deserializer,
         };
+        use std::collections::HashMap;
 
         pub fn serialize<S: Serializer>(value: &CloudLocation, serializer: S) -> Result<S::Ok, S::Error> {
             match value {

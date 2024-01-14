@@ -40,6 +40,7 @@ azure_core = "0.19.0"
 azure_storage = "0.19.0"
 azure_storage_blobs = "0.19.0"
 bytes = "1.5.0"
+futures-util = "0.3.30"
 log = { version = "0.4.20", optional = true }
 remi = { path = "../../remi" }
 serde = { version = "1.0.195", features = ["derive"], optional = true }

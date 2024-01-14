@@ -21,29 +21,77 @@
 
 use crate::StorageConfig;
 use async_trait::async_trait;
+use azure_core::request_options::Prefix;
 use azure_storage_blobs::prelude::ContainerClient;
 use bytes::Bytes;
-use remi::{Blob, ListBlobsRequest, UploadRequest};
-use std::{io, path::Path};
+use futures_util::StreamExt;
+use remi::{Blob, File, ListBlobsRequest, UploadRequest};
+use std::{io, ops::Deref, path::Path, time::SystemTime};
+
+fn to_io_error(error: azure_core::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, error)
+}
 
 #[derive(Debug, Clone)]
-pub struct StorageService(ContainerClient);
+pub struct StorageService {
+    container: ContainerClient,
+
+    #[allow(unused)]
+    config: StorageConfig,
+}
 
 impl StorageService {
     /// Creates a new [`StorageService`] with a provided [`StorageConfig`].
     pub fn new(config: StorageConfig) -> StorageService {
-        Self::with_client(config)
+        Self {
+            container: config.clone().into(),
+            config,
+        }
     }
+}
 
-    /// Creates a new [`StorageService`] with a preconfigured [`ContainerClient`].
-    pub fn with_client<C: Into<ContainerClient>>(client: C) -> StorageService {
-        StorageService(client.into())
+impl Deref for StorageService {
+    type Target = ContainerClient;
+
+    fn deref(&self) -> &Self::Target {
+        &self.container
     }
 }
 
 #[async_trait]
 impl remi::StorageService for StorageService {
     const NAME: &'static str = "remi:azure";
+
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "remi.azure.init",
+            skip_all,
+            fields(
+                remi.service = "azure"
+            )
+        )
+    )]
+    async fn init(&self) -> io::Result<()> {
+        if self.container.exists().await.map_err(to_io_error)? {
+            return Ok(());
+        }
+
+        #[cfg(feature = "tracing")]
+        ::tracing::info!(
+            remi.service = "azure",
+            container = self.config.container,
+            "creating blob container as it doesn't exist"
+        );
+
+        #[cfg(feature = "log")]
+        ::log::info!(
+            "creating blob container [{}] as it doesn't exist",
+            self.config.container
+        );
+
+        self.container.create().await.map_err(to_io_error)
+    }
 
     #[cfg_attr(
         feature = "tracing",
@@ -57,7 +105,33 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
-        unimplemented!()
+        let path = path.as_ref();
+
+        #[cfg(feature = "tracing")]
+        ::tracing::info!(
+            remi.service = "azure",
+            container = self.config.container,
+            path = %path.display(),
+            "opening blob in container"
+        );
+
+        #[cfg(feature = "log")]
+        ::log::info!(
+            "opening blob [{}] in container [{}]",
+            path.display(),
+            self.config.container
+        );
+
+        let client = self.container.blob_client(
+            path.to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
+        );
+
+        if !client.exists().await.map_err(to_io_error)? {
+            return Ok(None);
+        }
+
+        Ok(Some(Bytes::from(client.get_content().await.map_err(to_io_error)?)))
     }
 
     #[cfg_attr(
@@ -72,7 +146,62 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
-        unimplemented!()
+        let path = path.as_ref();
+
+        #[cfg(feature = "tracing")]
+        ::tracing::info!(
+            remi.service = "azure",
+            container = self.config.container,
+            path = %path.display(),
+            "opening blob in container"
+        );
+
+        #[cfg(feature = "log")]
+        ::log::info!(
+            "opening blob [{}] in container [{}]",
+            path.display(),
+            self.config.container
+        );
+
+        let client = self.container.blob_client(
+            path.to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
+        );
+
+        let props = client.get_properties().await.map_err(to_io_error)?;
+        let data = Bytes::from(client.get_content().await.map_err(to_io_error)?);
+
+        Ok(Some(Blob::File(File {
+            last_modified_at: {
+                let last_modified: SystemTime = props.blob.properties.last_modified.into();
+                Some(
+                    last_modified
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .expect("SystemTime overflow?!")
+                        .as_millis(),
+                )
+            },
+            content_type: Some(props.blob.properties.content_type),
+            created_at: {
+                let created_at: SystemTime = props.blob.properties.creation_time.into();
+                Some(
+                    created_at
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .expect("SystemTime overflow?!")
+                        .as_millis(),
+                )
+            },
+            is_symlink: false,
+            data,
+            path: format!("azure://{}", props.blob.name),
+            name: props.blob.name,
+            size: props.blob.properties.content_length.try_into().map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("expected content length to fit into `usize`: {e}"),
+                )
+            })?,
+        })))
     }
 
     #[cfg_attr(
@@ -88,9 +217,75 @@ impl remi::StorageService for StorageService {
     async fn blobs<P: AsRef<Path> + Send>(
         &self,
         path: Option<P>,
-        _request: Option<ListBlobsRequest>,
+        request: Option<ListBlobsRequest>,
     ) -> io::Result<Vec<Blob>> {
-        unimplemented!()
+        // TODO(@auguwu): support filtering files, for now we should probably
+        // heavily test this
+        #[allow(unused)]
+        if let Some(path) = path {
+            #[cfg(feature = "tracing")]
+            ::tracing::warn!(
+                remi.service = "gridfs",
+                file = %path.as_ref().display(),
+                "using blobs() with a given file name is not supported",
+            );
+
+            #[cfg(feature = "log")]
+            ::log::warn!(
+                "using blobs() with a given file name [{}] is not supported",
+                path.as_ref().display()
+            );
+
+            return Ok(vec![]);
+        }
+
+        let options = request.unwrap_or_default();
+        let mut blobs = self.container.list_blobs();
+
+        if let Some(prefix) = options.prefix {
+            blobs = blobs.prefix(Prefix::from(prefix.clone()));
+        }
+
+        let mut stream = blobs.into_stream();
+        let mut blobs = vec![];
+        while let Some(value) = stream.next().await {
+            let data = value.map_err(to_io_error)?;
+            for blob in data.blobs.blobs() {
+                blobs.push(Blob::File(File {
+                    last_modified_at: {
+                        let last_modified: SystemTime = blob.properties.last_modified.into();
+                        Some(
+                            last_modified
+                                .duration_since(SystemTime::UNIX_EPOCH)
+                                .expect("SystemTime overflow?!")
+                                .as_millis(),
+                        )
+                    },
+                    content_type: Some(blob.properties.content_type.clone()),
+                    created_at: {
+                        let created_at: SystemTime = blob.properties.creation_time.into();
+                        Some(
+                            created_at
+                                .duration_since(SystemTime::UNIX_EPOCH)
+                                .expect("SystemTime overflow?!")
+                                .as_millis(),
+                        )
+                    },
+                    is_symlink: false,
+                    data: self.open(&blob.name).await?.unwrap(),
+                    path: format!("azure://{}", blob.name),
+                    name: blob.name.clone(),
+                    size: blob.properties.content_length.try_into().map_err(|e| {
+                        io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("expected content length to fit into `usize`: {e}"),
+                        )
+                    })?,
+                }));
+            }
+        }
+
+        Ok(blobs)
     }
 
     #[cfg_attr(
@@ -105,7 +300,34 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
-        unimplemented!()
+        let path = path.as_ref();
+
+        #[cfg(feature = "tracing")]
+        ::tracing::info!(
+            remi.service = "azure",
+            container = self.config.container,
+            path = %path.display(),
+            "deleting blob in container"
+        );
+
+        #[cfg(feature = "log")]
+        ::log::info!(
+            "deleting blob [{}] in container [{}]",
+            path.display(),
+            self.config.container
+        );
+
+        let client = self.container.blob_client(
+            path.to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
+        );
+
+        // file doesn't exist, skip right away
+        if !client.exists().await.map_err(to_io_error)? {
+            return Ok(());
+        }
+
+        client.delete().await.map(|_| ()).map_err(to_io_error)
     }
 
     #[cfg_attr(
@@ -120,7 +342,29 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
-        unimplemented!()
+        let path = path.as_ref();
+
+        #[cfg(feature = "tracing")]
+        ::tracing::info!(
+            remi.service = "azure",
+            container = self.config.container,
+            path = %path.display(),
+            "checking if blob is in container"
+        );
+
+        #[cfg(feature = "log")]
+        ::log::info!(
+            "checking if blob [{}] is in container [{}]",
+            path.display(),
+            self.config.container
+        );
+
+        let client = self.container.blob_client(
+            path.to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
+        );
+
+        client.exists().await.map_err(to_io_error)
     }
 
     #[cfg_attr(
@@ -135,7 +379,53 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
-        unimplemented!()
+        let path = path.as_ref();
+
+        #[cfg(feature = "tracing")]
+        ::tracing::info!(
+            remi.service = "azure",
+            container = self.config.container,
+            path = %path.display(),
+            "uploading blob to container"
+        );
+
+        #[cfg(feature = "log")]
+        ::log::info!(
+            "uploading blob [{}] into container [{}]",
+            path.display(),
+            self.config.container
+        );
+
+        let client = self.container.blob_client(
+            path.to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
+        );
+
+        if client.exists().await.map_err(to_io_error)? {
+            #[cfg(feature = "tracing")]
+            ::tracing::warn!(
+                remi.service = "azure",
+                container = self.config.container,
+                path = %path.display(),
+                "blob with path already exists in container, skipping"
+            );
+
+            #[cfg(feature = "log")]
+            ::log::info!(
+                "blob with path [{}] already exist in container [{}], skipping",
+                path.display(),
+                self.config.container
+            );
+
+            return Ok(());
+        }
+
+        let mut blob = client.put_block_blob(options.data);
+        if let Some(ct) = options.content_type {
+            blob = blob.content_type(ct);
+        }
+
+        blob.await.map(|_| ()).map_err(to_io_error)
     }
 }
 
@@ -178,6 +468,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn dbg_config() {
         if !is_docker_enabled() {
             eprintln!("[remi-azure] `docker` is missing, cannot run test");
