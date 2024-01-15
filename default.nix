@@ -18,14 +18,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-[workspace]
-resolver = "2"
-members = ["crates/*", "remi"]
-
-[workspace.package]
-version = "0.5.0"
-repository = "https://github.com/Noelware/remi-rs"
-license = "MIT"
-edition = "2021"
-rust-version = "1.71.0"
+let
+  compat = builtins.fetchTarball {
+    url = "https://github.com/edolstra/flake-compat/archive/b4a34015c698c7793d592d66adbab377907a2be8.tar.gz";
+    sha256 = "sha256:1qc703yg0babixi6wshn5wm2kgl5y1drcswgszh4xxzbrwkk9sv7";
+  };
+in
+  (import compat {src = ./.;}).defaultNix.default

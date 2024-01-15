@@ -1,80 +1,44 @@
 # 🐻‍❄️🧶 Remi (Rust Edition)
 > *Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers.*
 >
-> <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.3.0">v0.3.0</a></kbd> | [:scroll: **Documentation**](https://docs.rs/remi)
+> <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.5.0">v0.5.0</a></kbd> | [:scroll: **Documentation**](https://docs.rs/remi)
 
 **remi-rs** is a Rust port of Noelware's Java-based [Remi](https://github.com/Noelware/remi) for the Rust programming language. It provides a easy way to implement storage-related communications with different storage providers like Amazon S3, Google Cloud Storage, Azure Blob Storage, and more.
 
 Noelware has ported the Java-based Remi libraries since we use Kotlin and Rust heavily in our products and services, so it made sense to have both support for **Remi** in Java and Rust.
 
-The **remi-rs** crates are very experimental, if you have any issues or any ways to optimize the crates, please submit a [issue](https://github.com/Noelware/remi-rs/issues/new). :3
+> [!NOTE]
+> As of the v0.5 release, `remi-rs` will be our main priority. Java version is no longer maintained by the Noelware team.
+
+> [!WARNING]
+> These crates are highly experimental and shouldn't be used in production environments yet as they are still v0. While these crates are in our products, it is for testing them and see how they do in our environments.
+
+**remi-rs** is somewhat experimental, the only Remi crate that is finalized is the local filesystem and Amazon S3, as that is more tested within Noelware's Rust applications.
 
 ## Supported
-- **Google Cloud Storage** (with the `remi-gcs` crate)
-- **Azure Blob Storage** (with the `remi-azure` crate)
-- **Local Filesystem** (with the `remi-fs` crate)
-- **MongoDB GridFS** (with the `remi-gridfs` crate)
-- **Amazon S3** (with the `remi-s3` crate)
+- **Azure Blob Storage** (with the [`remi-azure`](https://docs.rs/remi-azure) crate)
+- **Local Filesystem** (with the [`remi-fs`](https://docs.rs/remi-fs) crate)
+- **MongoDB GridFS** (with the [`remi-gridfs`](https://docs.rs/remi-gridfs) crate)
+- **Amazon S3** (with the [`remi-s3`](https://docs.rs/remi-s3) crate)
 
 ## Unsupported
-- Oracle Cloud Infrastructure Object Storage
-- Digital Ocean Spaces
-  - Note: You can use the S3 storage service since it has a S3-compatible API
+- Oracle Cloud Infrastructure Object Storage: Use the `remi-s3` crate instead as it supported a S3-compatible API.
+- Digital Ocean Spaces: You can use the S3 storage service since it has a S3-compatible API
+- Google Cloud Storage: Plan to do it soon when there is an officially maintained Google Cloud SDK that is reliable or a community-maintained version can be present if wished.
 - Alibaba Cloud OSS Storage
 - Tencent Cloud COS Storage
 - OpenStack Object Storage
 - Baidu Cloud BOS Storage
 - Netease Cloud NOS Storage
 
-You can create your own community crate with the [remi-core](https://docs.rs/remi-core) crate.
+You can create your own community crate with the [`remi`](https://docs.rs/remi) crate.
 
 ## Usage
-As this library is asynchronously only, you will need to configure an asynchronous runtime. At the moment, this crate supports Tokio.
+As this library is asynchronously only, you will need to configure an async runtime! Us at Noelware use [Tokio](https://tokio.rs), but using `async-std` is experimental and things might break.
 
-The main crate (`remi`) is the only one you should import since it'll import the other crates based off what features you want Cargo to use. The available features are:
+The main crate (`remi`) since v0.5.0 and above cleans up the code from `remi-core` and is migrated to that library instead to make more sense out of it, essentially, `remi-core` has been decommissioned since the v0.5 release.
 
-- **gridfs** - Enables the [MongoDB GridFS](https://docs.rs/remi-gridfs) crate.
-- **s3**     - Enables the [Amazon S3](https://docs.rs/remi-s3) crate.
-- **fs**     - Enables the [local filesystem](https://docs.rs/remi-fs) crate, enabled by default.
-
-You can run each individual example in the [./examples](./examples) directory.
-
-### Library Usage
-This example assumes you're using Tokio as the async runtime.
-
-```toml
-[dependencies]
-tokio = { version = "1.28", features = ["fs", "io_util"] }
-remi = "0.3"
-```
-
-```rust
-use remi::filesystem::FilesystemService;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let fs = FilesystemStorageService::new("./.data");
-
-    // init() will create the directory that was passed above
-    // if it doesn't exist on the disk
-    fs.init().await?;
-
-    // now, let's open a file that doesn't exist
-    let file = fs.open("./owo.txt").await?;
-    // "file" will be None since the file doesn't exist on the disk
-
-    // let's create the file
-    fs.upload("./owo.txt", UploadRequest::builder()
-        .content(Bytes::new())
-        .content_type("text/plain")
-        .build()?
-    ).await?;
-
-    // now, let's read the file again
-    let file = fs.open("./owo.txt").await?;
-    // "file" is now Some(Blob::File).
-}
-```
+Examples for each crate can be ran with `cargo run --package [crate-name] --example [example-name]` and will live in `crates/{crate-name}/examples`.
 
 ## License
 **remi-rs** is released under the **MIT License** with love by [Noelware](https://noelware.org). :3

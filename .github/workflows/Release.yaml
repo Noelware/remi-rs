@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-# Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+# Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: Release crate
+name: Release crates
 on:
   release:
     types:
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@v4
         with:
           submodules: 'true'
 
@@ -43,6 +43,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Publish!
-        run: chmod +x ./scripts/release.sh && ./scripts/release.sh
-        env:
-            CRATES_IO_TOKEN: ${{secrets.CARGO_REGISTRY_TOKEN}}
+        run: cargo publish --token=${{secrets.CARGO_REGISTRY_TOKEN}}

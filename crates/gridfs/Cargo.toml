@@ -19,13 +19,31 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-[workspace]
-resolver = "2"
-members = ["crates/*", "remi"]
+[package]
+name = "remi-gridfs"
+description = "🐻‍❄️🧶 MongoDB GridFS implementation of `remi`"
+version.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
-[workspace.package]
-version = "0.5.0"
-repository = "https://github.com/Noelware/remi-rs"
-license = "MIT"
-edition = "2021"
-rust-version = "1.71.0"
+[features]
+default = []
+tracing = ["dep:tracing"]
+serde = ["dep:serde"]
+log = ["dep:log"]
+
+[dependencies]
+async-trait = "0.1.77"
+bytes = "1.5.0"
+futures-util = "0.3.30"
+log = { version = "0.4.20", optional = true }
+mongodb = "2.8.0"
+remi = { path = "../../remi" }
+serde = { version = "1.0.195", features = ["derive"], optional = true }
+tokio-util = "0.7.10"
+tracing = { version = "0.1.40", optional = true }
+
+[package.metadata.docs.rs]
+all-features = true

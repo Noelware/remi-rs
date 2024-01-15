@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
-# Copyright (c) 2022-2023 Noelware, LLC. <team@noelware.org>
+# Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,5 +19,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+use_field_init_shorthand = true
+match_arm_leading_pipes = "Preserve"
+use_try_shorthand = true
+newline_style = "Unix" # keep it consistent
+max_width = 120
 edition = "2021"
-newline_style = "Unix"
