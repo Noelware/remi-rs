@@ -38,7 +38,7 @@ As this library is asynchronously only, you will need to configure an async runt
 
 The main crate (`remi`) since v0.5.0 and above cleans up the code from `remi-core` and is migrated to that library instead to make more sense out of it, essentially, `remi-core` has been decommissioned since the v0.5 release.
 
-We include a bunch of examples in [./examples](./examples), use `cargo run --example` to run an example.
+Examples for each crate can be ran with `cargo run --package [crate-name] --example [example-name]` and will live in `crates/{crate-name}/examples`.
 
 ## License
 **remi-rs** is released under the **MIT License** with love by [Noelware](https://noelware.org). :3
