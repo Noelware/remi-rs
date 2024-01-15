@@ -76,28 +76,35 @@ impl StorageService {
     ///   the directory was found. Otherwise, it'll use the current directory.
     ///
     /// * If the path starts with `~/`, then it will resolve from the home directory from [`dirs::home_dir`].
-    #[cfg_attr(feature = "tracing", instrument(name = "remi.filesystem.normalize", skip_all))]
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            name = "remi.filesystem.normalize",
+            skip_all,
+            fields(remi.service = "fs", path = %path.as_ref().display())
+        )
+    )]
     pub fn normalize<P: AsRef<Path>>(&self, path: P) -> io::Result<Option<PathBuf>> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
+        tracing::trace!(
             remi.service = "fs",
             path = tracing::field::display(path.display()),
             "resolving path"
         );
 
         #[cfg(feature = "log")]
-        log::info!("resolving path {}", path.display());
+        log::trace!("resolving path {}", path.display());
 
         if path == self.config.directory {
-            return std::fs::canonicalize(self.config.directory.clone()).map(|x| Ok(Some(x)))?;
+            return std::fs::canonicalize(&self.config.directory).map(|x| Ok(Some(x)))?;
         }
 
         if path.starts_with("./") {
-            let Some(directory) = self.normalize(self.config.directory.clone())? else {
+            let Some(directory) = self.normalize(&self.config.directory)? else {
                 #[cfg(feature = "tracing")]
-                tracing::info!(
+                tracing::warn!(
                     remi.service = "fs",
                     path = tracing::field::display(path.display()),
                     directory = tracing::field::display(self.config.directory.display()),
@@ -105,7 +112,7 @@ impl StorageService {
                 );
 
                 #[cfg(feature = "log")]
-                log::info!("unable to resolve given directory from config");
+                log::warn!("unable to resolve given directory from config");
 
                 return Ok(None);
             };
@@ -113,10 +120,10 @@ impl StorageService {
             let normalized = format!("{}/{}", directory.display(), path.strip_prefix("./").unwrap().display());
 
             #[cfg(feature = "tracing")]
-            tracing::info!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
+            tracing::trace!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
 
             #[cfg(feature = "log")]
-            log::info!("resolved path {} to {normalized}", path.display());
+            log::trace!("resolved path {} to {normalized}", path.display());
 
             return Ok(Some(Path::new(&normalized).to_path_buf()));
         }
@@ -124,14 +131,14 @@ impl StorageService {
         if path.starts_with("~/") {
             let Some(homedir) = dirs::home_dir() else {
                 #[cfg(feature = "tracing")]
-                tracing::info!(
+                tracing::warn!(
                     remi.service = "fs",
                     path = tracing::field::display(path.display()),
                     "unable to resolve home directory"
                 );
 
                 #[cfg(feature = "log")]
-                log::info!("unable to resolve home directory");
+                log::warn!("unable to resolve home directory");
 
                 return Ok(None);
             };
@@ -139,10 +146,10 @@ impl StorageService {
             let normalized = format!("{}/{}", homedir.display(), path.strip_prefix("~/").unwrap().display());
 
             #[cfg(feature = "tracing")]
-            tracing::info!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
+            tracing::trace!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
 
             #[cfg(feature = "log")]
-            log::info!("resolved path {} to {normalized}", path.display());
+            log::trace!("resolved path {} to {normalized}", path.display());
 
             return Ok(Some(Path::new(&normalized).to_path_buf()));
         }

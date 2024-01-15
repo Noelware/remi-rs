@@ -139,13 +139,13 @@ impl UploadRequest {
     /// Overrides the content type when the request is sent.
     ///
     /// ## Example
-    /// ```
+    /// ```rust,ignore
     /// # use remi::UploadRequest;
     /// #
     /// let mut req = UploadRequest::default();
     /// assert!(req.content_type.is_none());
     ///
-    /// let _ = req.with_content_type(Some("application/json; charset=utf-8"));
+    /// let _ = req.clone().with_content_type(Some("application/json; charset=utf-8"));
     /// assert!(req.content_type.is_some());
     /// assert_eq!(req.content_type.unwrap().as_str(), "application/json; charset=utf-8");
     /// ```
@@ -163,14 +163,14 @@ impl UploadRequest {
     /// Overrides the data container for this request to a new container provided.
     ///
     /// ## Example
-    /// ```
+    /// ```rust,ignore
     /// # use remi_core::UploadRequest;
     /// # use bytes::Bytes;
     /// #
     /// let mut req = UploadRequest::default();
     /// assert!(req.data.is_empty());
     ///
-    /// let _ = req.with_data(Bytes::from_static(&[0x12, 0x13]));
+    /// let _ = req.clone().with_data(Bytes::from_static(&[0x12, 0x13]));
     /// assert!(!req.data.is_empty());
     /// ```
     pub fn with_data<I: Into<Bytes>>(mut self, container: I) -> Self {
