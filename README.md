@@ -8,16 +8,19 @@
 Noelware has ported the Java-based Remi libraries since we use Kotlin and Rust heavily in our products and services, so it made sense to have both support for **Remi** in Java and Rust.
 
 > [!NOTE]
->
 > As of the v0.5 release, `remi-rs` will be our main priority. Java version is no longer maintained by the Noelware team.
+
+> [!WARNING]
+> These crates are highly experimental and shouldn't be used in production environments yet as they are still v0. While these crates are in our products, it is for testing them and see how they do in our environments.
 
 **remi-rs** is somewhat experimental, the only Remi crate that is finalized is the local filesystem and Amazon S3, as that is more tested within Noelware's Rust applications.
 
 ## Supported
-- **Google Cloud Storage** (with the `remi-gcs` crate)
-- **Azure Blob Storage** (with the `remi-azure` crate)
-- **Local Filesystem** (with the `remi-fs` crate)
-- **Amazon S3** (with the `remi-s3` crate)
+- **Google Cloud Storage** (with the [`remi-gcs`](https://docs.rs/remi-gcs) crate)
+- **Azure Blob Storage** (with the [`remi-azure`](https://docs.rs/remi-azure) crate)
+- **Local Filesystem** (with the [`remi-fs`](https://docs.rs/remi-fs) crate)
+- **MongoDB GridFS** (with the [`remi-gridfs`](https://docs.rs/remi-gridfs) crate)
+- **Amazon S3** (with the [`remi-s3`](https://docs.rs/remi-s3) crate)
 
 ## Unsupported
 - Oracle Cloud Infrastructure Object Storage: Use the `remi-s3` crate instead as it supported a S3-compatible API.
@@ -27,7 +30,6 @@ Noelware has ported the Java-based Remi libraries since we use Kotlin and Rust h
 - OpenStack Object Storage
 - Baidu Cloud BOS Storage
 - Netease Cloud NOS Storage
-- MongoDB GridFS: decommissioned, was available from [`remi-gridfs`](https://docs.rs/remi-gridfs)
 
 You can create your own community crate with the [`remi`](https://docs.rs/remi) crate.
 
