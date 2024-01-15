@@ -24,6 +24,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
 use std::{
+    borrow::Cow,
     io,
     path::{Path, PathBuf},
     sync::Arc,
@@ -56,7 +57,11 @@ pub struct StorageService {
 impl StorageService {
     /// Creates a new [`StorageService`] instance.
     pub fn new<P: AsRef<Path>>(path: P) -> StorageService {
-        let config = Config::new(path);
+        Self::with_config(Config::new(path))
+    }
+
+    /// Creates a new [`StorageService`] instance with a provided configuration object.
+    pub fn with_config(config: Config) -> StorageService {
         StorageService {
             resolver: Arc::new(Box::new(default_resolver)),
             config,
@@ -380,7 +385,7 @@ impl RemiStorageService for StorageService {
             );
 
             #[cfg(feature = "log")]
-            log::warn!("path given [{}] was a file, not a directory", path.display());
+            log::warn!("path given [{}] couldn't be normalized", path.display());
 
             return Ok(None);
         };
@@ -397,9 +402,15 @@ impl RemiStorageService for StorageService {
                 Err(_) => None,
             };
 
+            let name = path
+                .file_name()
+                .map(|s| s.to_string_lossy())
+                .unwrap_or(Cow::Borrowed("<root or relative path>"))
+                .to_string();
+
             return Ok(Some(Blob::Directory(Directory {
                 created_at,
-                name: String::from("<unknown>"),
+                name,
                 path: format!("fs://{}", path.display()),
             })));
         }
@@ -490,8 +501,13 @@ impl RemiStorageService for StorageService {
                         Err(_) => None,
                     },
 
-                    name: String::from("<unknown>"),
-                    path: format!("{}", entry.path().display()),
+                    name: path
+                        .file_name()
+                        .map(|s| s.to_string_lossy())
+                        .unwrap_or(Cow::Borrowed("<root or relative path>"))
+                        .to_string(),
+
+                    path: format!("fs://{}", entry.path().display()),
                 }));
 
                 continue;
@@ -500,7 +516,6 @@ impl RemiStorageService for StorageService {
             let path = entry.path();
             let ext_allowed = match path.extension() {
                 Some(s) => options.is_ext_allowed(s.to_str().expect("valid utf-8 in path extension")),
-
                 None => true,
             };
 
