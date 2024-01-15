@@ -47,7 +47,7 @@ file-format = { version = "0.23.0", optional = true }
 futures = "0.3.30"
 infer = { version = "0.15.0", default-features = false, optional = true }
 log = { version = "0.4.20", optional = true }
-remi = { path = "../../remi" }
+remi = { path = "../../remi", version = "0.5.0" }
 serde = { version = "1.0.195", features = ["derive"], optional = true }
 serde_json = { version = "1.0.111", optional = true }
 serde_yaml = { version = "0.9.30", optional = true }
