@@ -446,6 +446,43 @@ mod tests {
             return;
         }
 
+        // in CI (GitHub Actions), it will pull the `azurite` image as a Windows container and Microsoft
+        // doesn't ship Windows containers of the `azurite` image, so we just ignore the test alltogether
+        //
+        // TODO(@auguwu): how to fix this? :3
+        //
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // running 2 tests
+        // test service::tests::dbg_config ... ignored
+        // 2024-01-15T01:40:26.004251Z DEBUG testcontainers::clients::cli: Executing command: "docker" "run" "--expose=10000" "-P" "-d" "mcr.microsoft.com/azure-storage/azurite:3.29.0" "azurite-blob" "--blobHost" "0.0.0.0"
+        // 2024-01-15T01:40:33.899191Z ERROR testcontainers::clients::cli: Failed to start container.
+        // Container stdout:
+        // Container stderr: Unable to find image 'mcr.microsoft.com/azure-storage/azurite:3.29.0' locally
+        // 3.29.0: Pulling from azure-storage/azurite
+        // docker: no matching manifest for windows/amd64 10.0.20348 in the manifest list entries.
+        // See 'docker run --help'.
+        //
+        // test service::tests::check_if_azurite_container_can_run ... FAILED
+        //
+        // failures:
+        //
+        // ---- service::tests::check_if_azurite_container_can_run stdout ----
+        // thread 'service::tests::check_if_azurite_container_can_run' panicked at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-6f17d22bba15001f\testcontainers-0.15.0\src\clients\cli.rs:51:13:
+        // Failed to start container, check log for details
+        // note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+        //
+        // failures:
+        //     service::tests::check_if_azurite_container_can_run
+        //
+        // test result: FAILED. 0 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 7.90s
+        //
+        // error: test failed, to rerun pass `-p remi-azure --lib`
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if is_docker_enabled() && cfg!(windows) {
+            eprintln!("[remi-azure] `docker` is enabled but it might not be configured with using Linux containers, cannot run test");
+            return;
+        }
+
         // testcontainers uses 'log' to output information, so we use tracing_subscriber
         // with `tracing_log` to output to stdout (useful for debugging)
         crate::setup_log_pipeline();
