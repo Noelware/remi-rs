@@ -42,7 +42,7 @@ use tracing::instrument;
 
 #[deprecated(
     since = "0.5.0",
-    note = "`FilesystemStorageService` has been renamed to `StorageService`"
+    note = "`FilesystemStorageService` has been renamed to `StorageService`, this will be removed in v0.7.0"
 )]
 pub type FilesystemStorageService = StorageService;
 
@@ -247,6 +247,7 @@ impl StorageService {
 
 #[async_trait]
 impl RemiStorageService for StorageService {
+    type Error = io::Error;
     const NAME: &'static str = "remi:fs";
 
     #[cfg_attr(

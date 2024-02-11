@@ -22,7 +22,7 @@
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc = include_str!("../README.md")]
 
-use std::{io, path::Path};
+use std::path::Path;
 
 // re-export (just in case!~)
 pub use async_trait::async_trait;
@@ -39,40 +39,47 @@ pub use options::*;
 /// listing, etc.
 #[async_trait]
 pub trait StorageService: Send + Sync {
+    /// Represents a generic error interface to use for errors that could be emitted
+    /// when calling any function.
+    type Error;
+
     /// The name of the storage service.
     const NAME: &'static str;
 
     /// Returns the name of this [`StorageService`].
-    #[deprecated(since = "0.5.0", note = "use Self::NAME instead of the name() function")]
+    #[deprecated(
+        since = "0.5.0",
+        note = "use Self::NAME instead of the name() function, this will be removed in 0.7.0"
+    )]
     fn name(&self) -> &'static str {
         Self::NAME
     }
 
     /// Optionally initialize this [`StorageService`] if it requires initialization,
     /// like creating a directory if it doesn't exist.
-    async fn init(&self) -> io::Result<()> {
+    async fn init(&self) -> Result<(), Self::Error> {
         Ok(())
     }
 
     /// Opens a file in a given `path` and returns a Option variant of a given [`Bytes`] container.
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>>;
+    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>, Self::Error>;
 
     /// Returns a [`Blob`] instance of the given file or directory, if it exists.
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>>;
+    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>, Self::Error>;
 
     /// Similar to [`blob`](StorageService::blob) but returns a list of blobs that exist
     async fn blobs<P: AsRef<Path> + Send>(
         &self,
         path: Option<P>,
         options: Option<ListBlobsRequest>,
-    ) -> io::Result<Vec<Blob>>;
+    ) -> Result<Vec<Blob>, Self::Error>;
 
     /// Deletes a path.
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()>;
+    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<(), Self::Error>;
 
     /// Checks whether or not if a path exists.
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool>;
+    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool, Self::Error>;
 
     /// Uploads a path.
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()>;
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error>;
 }

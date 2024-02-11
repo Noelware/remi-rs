@@ -32,7 +32,10 @@ pub enum Blob {
 }
 
 /// Representation of a [`Blob`] that is a file.
-#[deprecated(since = "0.5.0", note = "`FileBlob` was renamed to `File`")]
+#[deprecated(
+    since = "0.5.0",
+    note = "`FileBlob` was renamed to `File`, this will be removed in v0.7.0"
+)]
 pub type FileBlob = File;
 
 /// Representation of a [`Blob`] that is a file.
@@ -83,7 +86,10 @@ impl Display for File {
 }
 
 /// Representation of a [`Blob`] that is a directory.
-#[deprecated(since = "0.5.0", note = "`DirectoryBlob` was renamed to `Directory`")]
+#[deprecated(
+    since = "0.5.0",
+    note = "`DirectoryBlob` was renamed to `Directory`, this will be removed in v0.7.0"
+)]
 pub type DirectoryBlob = Directory;
 
 /// Represents a directory that was located somewhere.

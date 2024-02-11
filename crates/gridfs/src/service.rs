@@ -32,36 +32,29 @@ use remi::{Blob, File, ListBlobsRequest, UploadRequest};
 use std::{io, path::Path};
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
 
-fn to_io_error(error: mongodb::error::Error) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, error)
-}
-
-fn value_access_err_to_io_error(error: mongodb::bson::raw::ValueAccessError) -> io::Error {
+fn value_access_err_to_error(error: mongodb::bson::raw::ValueAccessError) -> mongodb::error::Error {
     match error.kind {
         ValueAccessErrorKind::NotPresent => {
-            io::Error::new(io::ErrorKind::NotFound, format!("key [{}] was not found", error.key()))
+            mongodb::error::Error::custom(format!("key [{}] was not found", error.key()))
         }
 
-        ValueAccessErrorKind::UnexpectedType { expected, actual, .. } => io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "expected BSON type '{expected:?}', actual type for key [{}] is '{actual:?}'",
-                error.key()
-            ),
-        ),
+        ValueAccessErrorKind::UnexpectedType { expected, actual, .. } => mongodb::error::Error::custom(format!(
+            "expected BSON type '{expected:?}', actual type for key [{}] is '{actual:?}'",
+            error.key()
+        )),
 
-        ValueAccessErrorKind::InvalidBson(err) => io::Error::new(io::ErrorKind::Other, err),
+        ValueAccessErrorKind::InvalidBson(err) => err.into(),
         _ => unimplemented!(
             "`ValueAccessErrorKind` was unhandled, please report it: https://github.com/Noelware/remi-rs/issues/new"
         ),
     }
 }
 
-fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, io::Error> {
-    let filename = doc.get_str("filename").map_err(value_access_err_to_io_error)?;
-    let length = doc.get_i64("length").map_err(value_access_err_to_io_error)?;
-    let content_type = doc.get_str("contentType").map_err(value_access_err_to_io_error)?;
-    let created_at = doc.get_datetime("uploadDate").map_err(value_access_err_to_io_error)?;
+fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::error::Error> {
+    let filename = doc.get_str("filename").map_err(value_access_err_to_error)?;
+    let length = doc.get_i64("length").map_err(value_access_err_to_error)?;
+    let content_type = doc.get_str("contentType").map_err(value_access_err_to_error)?;
+    let created_at = doc.get_datetime("uploadDate").map_err(value_access_err_to_error)?;
 
     Ok(File {
         last_modified_at: None,
@@ -69,6 +62,10 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, io::Error> 
         created_at: if created_at.timestamp_millis() < 0 {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(remi.service = "gridfs", %filename, "`created_at` timestamp was negative");
+
+            #[cfg(feature = "log")]
+            ::log::warn!("`created_at` for file {filename} was negative");
+
             None
         } else {
             Some(
@@ -93,7 +90,7 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, io::Error> 
 
 #[deprecated(
     since = "0.5.0",
-    note = "`GridfsStorageService` has been renamed to `StorageService`"
+    note = "`GridfsStorageService` has been renamed to `StorageService`, this will be removed in v0.7.0"
 )]
 pub type GridfsStorageService = StorageService;
 
@@ -116,6 +113,7 @@ impl StorageService {
 
 #[async_trait]
 impl remi::StorageService for StorageService {
+    type Error = mongodb::error::Error;
     const NAME: &'static str = "remi:gridfs";
 
     #[cfg_attr(
@@ -129,7 +127,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
+    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>, Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -147,10 +145,9 @@ impl remi::StorageService for StorageService {
         let mut cursor = self
             .0
             .find(doc! { "filename": path_str }, GridFsFindOptions::default())
-            .await
-            .map_err(to_io_error)?;
+            .await?;
 
-        let advanced = cursor.advance().await.map_err(to_io_error)?;
+        let advanced = cursor.advance().await?;
         if !advanced {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
@@ -169,17 +166,16 @@ impl remi::StorageService for StorageService {
         let stream = self
             .0
             .open_download_stream(Bson::ObjectId(
-                doc.get_object_id("_id").map_err(value_access_err_to_io_error)?,
+                doc.get_object_id("_id").map_err(value_access_err_to_error)?,
             ))
-            .await
-            .map_err(to_io_error)?;
+            .await?;
 
         let mut bytes = BytesMut::new();
         let mut reader = ReaderStream::new(stream.compat());
         while let Some(raw) = reader.next().await {
             match raw {
                 Ok(b) => bytes.extend(b),
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             }
         }
 
@@ -197,7 +193,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
+    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>, Self::Error> {
         let path = path.as_ref();
         let Some(bytes) = self.open(path).await? else {
             return Ok(None);
@@ -225,11 +221,10 @@ impl remi::StorageService for StorageService {
                 },
                 GridFsFindOptions::default(),
             )
-            .await
-            .map_err(to_io_error)?;
+            .await?;
 
         // has_advanced returns false if there is no entries that have that filename
-        let has_advanced = cursor.advance().await.map_err(to_io_error)?;
+        let has_advanced = cursor.advance().await?;
         if !has_advanced {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(remi.service = "gridfs", file = %path.display(), "file doesn't exist");
@@ -241,7 +236,7 @@ impl remi::StorageService for StorageService {
         }
 
         let doc = cursor.current();
-        Ok(Some(Blob::File(document_to_blob(bytes, doc)?)))
+        document_to_blob(bytes, doc).map(|doc| Some(Blob::File(doc)))
     }
 
     #[cfg_attr(
@@ -258,7 +253,7 @@ impl remi::StorageService for StorageService {
         &self,
         path: Option<P>,
         _request: Option<ListBlobsRequest>,
-    ) -> io::Result<Vec<Blob>> {
+    ) -> Result<Vec<Blob>, Self::Error> {
         // TODO(@auguwu): support filtering files, for now we should probably
         // heavily test this
         #[allow(unused)]
@@ -279,29 +274,24 @@ impl remi::StorageService for StorageService {
             return Ok(vec![]);
         }
 
-        let mut cursor = self
-            .0
-            .find(doc!(), GridFsFindOptions::default())
-            .await
-            .map_err(to_io_error)?;
+        let mut cursor = self.0.find(doc!(), GridFsFindOptions::default()).await?;
 
         let mut blobs = vec![];
-        while cursor.advance().await.map_err(to_io_error)? {
+        while cursor.advance().await? {
             let doc = cursor.current();
             let stream = self
                 .0
                 .open_download_stream(Bson::ObjectId(
-                    doc.get_object_id("_id").map_err(value_access_err_to_io_error)?,
+                    doc.get_object_id("_id").map_err(value_access_err_to_error)?,
                 ))
-                .await
-                .map_err(to_io_error)?;
+                .await?;
 
             let mut bytes = BytesMut::new();
             let mut reader = ReaderStream::new(stream.compat());
             while let Some(raw) = reader.next().await {
                 match raw {
                     Ok(b) => bytes.extend(b),
-                    Err(e) => return Err(e),
+                    Err(e) => return Err(e.into()),
                 }
             }
 
@@ -336,7 +326,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
+    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<(), Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -359,11 +349,10 @@ impl remi::StorageService for StorageService {
                 },
                 GridFsFindOptions::default(),
             )
-            .await
-            .map_err(to_io_error)?;
+            .await?;
 
         // has_advanced returns false if there is no entries that have that filename
-        let has_advanced = cursor.advance().await.map_err(to_io_error)?;
+        let has_advanced = cursor.advance().await?;
         if !has_advanced {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(remi.service = "gridfs", file = %path.display(), "file doesn't exist");
@@ -375,9 +364,9 @@ impl remi::StorageService for StorageService {
         }
 
         let doc = cursor.current();
-        let oid = doc.get_object_id("_id").map_err(value_access_err_to_io_error)?;
+        let oid = doc.get_object_id("_id").map_err(value_access_err_to_error)?;
 
-        self.0.delete(Bson::ObjectId(oid)).await.map_err(to_io_error)
+        self.0.delete(Bson::ObjectId(oid)).await
     }
 
     #[cfg_attr(
@@ -391,7 +380,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
+    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool, Self::Error> {
         match self.open(path).await {
             Ok(Some(_)) => Ok(true),
             Ok(None) => Ok(false),
@@ -410,7 +399,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -431,7 +420,7 @@ impl remi::StorageService for StorageService {
 
         let mut stream = self.0.open_upload_stream(path_str, None);
         stream.write_all(&options.data[..]).await?;
-        stream.close().await
+        stream.close().await.map_err(From::from)
 
         // TODO(@auguwu): add metadata to document that was created and the given content type
         // if one was supplied.

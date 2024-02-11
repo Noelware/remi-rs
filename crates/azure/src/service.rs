@@ -26,11 +26,7 @@ use azure_storage_blobs::prelude::ContainerClient;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
-use std::{io, ops::Deref, path::Path, time::SystemTime};
-
-fn to_io_error(error: azure_core::Error) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, error)
-}
+use std::{ops::Deref, path::Path, time::SystemTime};
 
 #[derive(Debug, Clone)]
 pub struct StorageService {
@@ -60,6 +56,7 @@ impl Deref for StorageService {
 
 #[async_trait]
 impl remi::StorageService for StorageService {
+    type Error = azure_core::Error;
     const NAME: &'static str = "remi:azure";
 
     #[cfg_attr(
@@ -72,8 +69,8 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn init(&self) -> io::Result<()> {
-        if self.container.exists().await.map_err(to_io_error)? {
+    async fn init(&self) -> Result<(), Self::Error> {
+        if self.container.exists().await? {
             return Ok(());
         }
 
@@ -90,7 +87,7 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        self.container.create().await.map_err(to_io_error)
+        self.container.create().await
     }
 
     #[cfg_attr(
@@ -104,7 +101,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
+    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>, Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -122,16 +119,15 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(
-            path.to_str()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
-        );
+        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
+            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
+        })?);
 
-        if !client.exists().await.map_err(to_io_error)? {
+        if !client.exists().await? {
             return Ok(None);
         }
 
-        Ok(Some(Bytes::from(client.get_content().await.map_err(to_io_error)?)))
+        client.get_content().await.map(|content| Some(From::from(content)))
     }
 
     #[cfg_attr(
@@ -145,7 +141,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
+    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>, Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -163,13 +159,12 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(
-            path.to_str()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
-        );
+        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
+            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
+        })?);
 
-        let props = client.get_properties().await.map_err(to_io_error)?;
-        let data = Bytes::from(client.get_content().await.map_err(to_io_error)?);
+        let props = client.get_properties().await?;
+        let data = Bytes::from(client.get_content().await?);
 
         Ok(Some(Blob::File(File {
             last_modified_at: {
@@ -196,8 +191,8 @@ impl remi::StorageService for StorageService {
             path: format!("azure://{}", props.blob.name),
             name: props.blob.name,
             size: props.blob.properties.content_length.try_into().map_err(|e| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
+                azure_core::Error::new(
+                    azure_core::error::ErrorKind::Other,
                     format!("expected content length to fit into `usize`: {e}"),
                 )
             })?,
@@ -218,7 +213,7 @@ impl remi::StorageService for StorageService {
         &self,
         path: Option<P>,
         request: Option<ListBlobsRequest>,
-    ) -> io::Result<Vec<Blob>> {
+    ) -> Result<Vec<Blob>, Self::Error> {
         // TODO(@auguwu): support filtering files, for now we should probably
         // heavily test this
         #[allow(unused)]
@@ -249,7 +244,7 @@ impl remi::StorageService for StorageService {
         let mut stream = blobs.into_stream();
         let mut blobs = vec![];
         while let Some(value) = stream.next().await {
-            let data = value.map_err(to_io_error)?;
+            let data = value?;
             for blob in data.blobs.blobs() {
                 blobs.push(Blob::File(File {
                     last_modified_at: {
@@ -276,8 +271,8 @@ impl remi::StorageService for StorageService {
                     path: format!("azure://{}", blob.name),
                     name: blob.name.clone(),
                     size: blob.properties.content_length.try_into().map_err(|e| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
+                        azure_core::Error::new(
+                            azure_core::error::ErrorKind::Other,
                             format!("expected content length to fit into `usize`: {e}"),
                         )
                     })?,
@@ -299,7 +294,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
+    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<(), Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -317,17 +312,16 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(
-            path.to_str()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
-        );
+        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
+            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
+        })?);
 
         // file doesn't exist, skip right away
-        if !client.exists().await.map_err(to_io_error)? {
+        if !client.exists().await? {
             return Ok(());
         }
 
-        client.delete().await.map(|_| ()).map_err(to_io_error)
+        client.delete().await.map(|_| ())
     }
 
     #[cfg_attr(
@@ -341,7 +335,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
+    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool, Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -359,12 +353,11 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(
-            path.to_str()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
-        );
+        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
+            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
+        })?);
 
-        client.exists().await.map_err(to_io_error)
+        client.exists().await
     }
 
     #[cfg_attr(
@@ -378,7 +371,7 @@ impl remi::StorageService for StorageService {
             )
         )
     )]
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error> {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
@@ -396,12 +389,11 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(
-            path.to_str()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 path for blob"))?,
-        );
+        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
+            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
+        })?);
 
-        if client.exists().await.map_err(to_io_error)? {
+        if client.exists().await? {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
                 remi.service = "azure",
@@ -425,7 +417,7 @@ impl remi::StorageService for StorageService {
             blob = blob.content_type(ct);
         }
 
-        blob.await.map(|_| ()).map_err(to_io_error)
+        blob.await.map(|_| ())
     }
 }
 

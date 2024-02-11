@@ -39,7 +39,10 @@ macro_rules! to_io_error {
     };
 }
 
-#[deprecated(since = "0.5.0", note = "`S3StorageService` has been renamed to `StorageService`")]
+#[deprecated(
+    since = "0.5.0",
+    note = "`S3StorageService` has been renamed to `StorageService`, this will be removed in v0.7.0"
+)]
 pub type S3StorageService = StorageService;
 
 /// Represents an implementation of [`StorageService`] for Amazon Simple Storage Service.
@@ -100,6 +103,11 @@ impl StorageService {
 
 #[async_trait]
 impl RemiStorageService for StorageService {
+    // this has to stay `io::Error` since `SdkError` requires too much information
+    // and this can narrow down.
+    //
+    // TODO(@auguwu): this can be a flat error if we could do?
+    type Error = io::Error;
     const NAME: &'static str = "remi:s3";
 
     #[cfg_attr(

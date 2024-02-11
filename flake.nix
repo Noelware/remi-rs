@@ -30,13 +30,6 @@
         flake-utils.follows = "flake-utils";
       };
     };
-
-    crane = {
-      url = "github:ipetkov/crane";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-      };
-    };
   };
 
   outputs = {
@@ -44,7 +37,6 @@
     nixpkgs,
     flake-utils,
     rust-overlay,
-    crane,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
@@ -58,42 +50,11 @@
         else pkgs.clangStdenv;
 
       rust = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-      craneLib = crane.lib.${system};
-      commonArgs = {
-        src = craneLib.cleanCargoSource (craneLib.path ./.);
-        buildInputs = with pkgs; [
-          openssl
-        ];
-
-        nativeBuildInputs = with pkgs; [
-          pkg-config
-        ];
-      };
-
       rustflags =
         if stdenv.isLinux
         then ''-C link-arg=-fuse-ld=mold -C target-cpu=native $RUSTFLAGS''
         else "$RUSTFLAGS";
-
-      # builds only the dependencies
-      artifacts = craneLib.buildDepsOnly (commonArgs
-        // {
-          pname = "remi-deps";
-        });
-
-      # runs `cargo clippy`
-      clippy = craneLib.cargoClippy (commonArgs
-        // {
-          inherit artifacts;
-
-          pname = "remi-clippy";
-        });
     in {
-      checks = {
-        # checks for `nix flake check`
-        inherit clippy;
-      };
-
       devShells.default = pkgs.mkShell {
         nativeBuildInputs = with pkgs;
           [pkg-config]
@@ -107,7 +68,7 @@
         ];
 
         shellHook = ''
-          export RUSTFLAGS="--cfg tokio_unstable ${rustflags}"
+          export RUSTFLAGS="${rustflags}"
         '';
       };
     });
