@@ -26,7 +26,7 @@ use futures_util::{AsyncWriteExt, StreamExt};
 use mongodb::{
     bson::{doc, raw::ValueAccessErrorKind, Bson, RawDocument},
     options::GridFsFindOptions,
-    Database, GridFsBucket,
+    Client, Database, GridFsBucket,
 };
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
 use std::{io, path::Path};
@@ -100,9 +100,26 @@ pub struct StorageService(GridFsBucket);
 impl StorageService {
     /// Creates a new [`StorageService`] which uses the [`StorageConfig`] as a way to create
     /// the inner [`GridFsBucket`].
-    pub fn new(db: &Database, config: StorageConfig) -> StorageService {
+    pub fn new(db: Database, config: StorageConfig) -> StorageService {
         let bucket = db.gridfs_bucket(Some(config.into()));
         StorageService::with_bucket(bucket)
+    }
+
+    /// Return a new [`StorageService`] from a constructed [`Client`].
+    pub fn from_client(client: &Client, config: StorageConfig) -> StorageService {
+        Self::new(
+            client.database(&config.clone().database.unwrap_or(String::from("mydb"))),
+            config,
+        )
+    }
+
+    /// Creates a MongoDB client from a connection string and creates a new [`StorageService`] interface.
+    pub async fn from_conn_string<C: AsRef<str>>(
+        conn_string: C,
+        config: StorageConfig,
+    ) -> Result<StorageService, mongodb::error::Error> {
+        let client = Client::with_uri_str(conn_string).await?;
+        Ok(Self::from_client(&client, config))
     }
 
     /// Uses a preconfigured [`GridFsBucket`] as the underlying bucket.

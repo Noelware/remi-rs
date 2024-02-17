@@ -19,9 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use mongodb::options::{GridFsBucketOptions, ReadConcern, SelectionCriteria, WriteConcern};
+use mongodb::options::{ClientOptions, GridFsBucketOptions, ReadConcern, SelectionCriteria, WriteConcern};
 
-#[deprecated(since = "0.5.0", note = "`GridfsStorageConfig` has been renamed to `StorageConfig`")]
+#[deprecated(
+    since = "0.5.0",
+    note = "`GridfsStorageConfig` has been renamed to `StorageConfig`, which will be removed in v0.7.0"
+)]
 pub type GridfsStorageConfig = StorageConfig;
 
 #[derive(Debug, Clone)]
@@ -44,6 +47,10 @@ pub struct StorageConfig {
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
     pub write_concern: Option<WriteConcern>,
 
+    /// Configure the [`ClientOptions`] that allows to connect to a MongoDB server.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub client_options: Option<ClientOptions>,
+
     /// Specifies the [`ReadConcern`] for isolation for when reading documents from the GridFS store. Read the
     /// [`MongoDB` documentation](https://www.mongodb.com/docs/manual/reference/write-concern) for more information.
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
@@ -52,6 +59,11 @@ pub struct StorageConfig {
     /// Chunk size (in bytes) used to break the user file into chunks.
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
     pub chunk_size: Option<u32>,
+
+    /// Database to connect to if [`client_options`][StorageConfig::client_options] was set. It will default
+    /// to the default database.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub database: Option<String>,
 
     /// Bucket name that holds all the GridFS datastore blobs.
     pub bucket: String,
