@@ -38,10 +38,10 @@ log = ["dep:log"]
 async-trait = "0.1.77"
 aws-config = "1.1.5"
 aws-credential-types = "1.1.5"
-aws-sdk-s3 = "1.15.0"
+aws-sdk-s3 = { version = "1.15.0", features = ["behavior-version-latest"] }
 bytes = "1.5.0"
 log = { version = "0.4.20", optional = true }
-remi = { path = "../../remi", version = "0.6.0" }
+remi = { path = "../../remi", version = "0.6.1" }
 serde = { version = "1.0.196", features = ["derive"], optional = true }
 tokio = { version = "1.36.0", default-features = false }
 tracing = { version = "0.1.40", optional = true }

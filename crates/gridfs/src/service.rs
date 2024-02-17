@@ -126,6 +126,20 @@ impl StorageService {
     pub fn with_bucket(bucket: GridFsBucket) -> StorageService {
         StorageService(bucket)
     }
+
+    fn resolve_path<P: AsRef<Path>>(&self, path: P) -> Result<String, mongodb::error::Error> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            <mongodb::error::Error as From<io::Error>>::from(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected valid utf-8 string",
+            ))
+        })?;
+
+        // trim `./` and `~/` since S3 doesn't accept ./ or ~/ as valid paths
+        let path = path.trim_start_matches("~/").trim_start_matches("./");
+
+        Ok(path.to_owned())
+    }
 }
 
 #[async_trait]
@@ -145,7 +159,7 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>, Self::Error> {
-        let path = path.as_ref();
+        let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(remi.service = "gridfs", file = %path.display(), "opening file");
@@ -153,15 +167,9 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "log")]
         ::log::info!("opening file [{}]", path.display());
 
-        // ensure that the `path` is utf-8 encoded, because I think
-        // MongoDB expects strings to be utf-8 encoded?
-        let path_str = path
-            .to_str()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 encoded path string"))?;
-
         let mut cursor = self
             .0
-            .find(doc! { "filename": path_str }, GridFsFindOptions::default())
+            .find(doc! { "filename": path }, GridFsFindOptions::default())
             .await?;
 
         let advanced = cursor.advance().await?;
@@ -211,14 +219,10 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>, Self::Error> {
-        let path = path.as_ref();
-        let Some(bytes) = self.open(path).await? else {
+        let path = self.resolve_path(path)?;
+        let Some(bytes) = self.open(&path).await? else {
             return Ok(None);
         };
-
-        // .unwrap() is safe here since .open() validates if the path is a
-        // utf-8 string.
-        let path_str = path.to_str().unwrap();
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
@@ -234,7 +238,7 @@ impl remi::StorageService for StorageService {
             .0
             .find(
                 doc! {
-                    "filename": path_str,
+                    "filename": path,
                 },
                 GridFsFindOptions::default(),
             )
@@ -292,7 +296,6 @@ impl remi::StorageService for StorageService {
         }
 
         let mut cursor = self.0.find(doc!(), GridFsFindOptions::default()).await?;
-
         let mut blobs = vec![];
         while cursor.advance().await? {
             let doc = cursor.current();
@@ -344,7 +347,7 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<(), Self::Error> {
-        let path = path.as_ref();
+        let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(remi.service = "gridfs", file = %path.display(), "deleting file");
@@ -352,17 +355,11 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "log")]
         ::log::info!("deleting file [{}]", path.display());
 
-        // ensure that the `path` is utf-8 encoded, because I think
-        // MongoDB expects strings to be utf-8 encoded?
-        let path_str = path
-            .to_str()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 encoded path string"))?;
-
         let mut cursor = self
             .0
             .find(
                 doc! {
-                    "filename": path_str,
+                    "filename": path,
                 },
                 GridFsFindOptions::default(),
             )
@@ -417,7 +414,7 @@ impl remi::StorageService for StorageService {
         )
     )]
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error> {
-        let path = path.as_ref();
+        let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
@@ -429,13 +426,7 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "log")]
         ::log::info!("uploading file [{}] to GridFS", path.display());
 
-        // ensure that the `path` is utf-8 encoded, because I think
-        // MongoDB expects strings to be utf-8 encoded?
-        let path_str = path
-            .to_str()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected utf-8 encoded path string"))?;
-
-        let mut stream = self.0.open_upload_stream(path_str, None);
+        let mut stream = self.0.open_upload_stream(path, None);
         stream.write_all(&options.data[..]).await?;
         stream.close().await.map_err(From::from)
 

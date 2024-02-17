@@ -46,7 +46,7 @@ pub struct S3StorageConfig {
     /// Default ACL for all new objects.
     #[cfg_attr(
         feature = "serde",
-        serde(with = "__serde::object_acl", skip_serializing_if = "Option::is_none")
+        serde(default, with = "__serde::object_acl", skip_serializing_if = "Option::is_none")
     )]
     pub default_object_acl: Option<ObjectCannedAcl>,
 
@@ -54,7 +54,7 @@ pub struct S3StorageConfig {
     /// from the backend.
     #[cfg_attr(
         feature = "serde",
-        serde(with = "__serde::bucket_acl", skip_serializing_if = "Option::is_none")
+        serde(default, with = "__serde::bucket_acl", skip_serializing_if = "Option::is_none")
     )]
     pub default_bucket_acl: Option<BucketCannedAcl>,
 
@@ -79,7 +79,7 @@ pub struct S3StorageConfig {
     /// The region to use, this will default to `us-east-1`.
     #[cfg_attr(
         feature = "serde",
-        serde(with = "__serde::region", skip_serializing_if = "Option::is_none")
+        serde(default, with = "__serde::region", skip_serializing_if = "Option::is_none")
     )]
     pub region: Option<Region>,
 

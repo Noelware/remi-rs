@@ -80,11 +80,19 @@ impl StorageService {
         }
     }
 
-    fn resolve_path<P: AsRef<Path>>(&self, path: P) -> String {
-        match self.config.prefix {
-            Some(ref prefix) => format!("{prefix}/{}", path.as_ref().display()),
-            None => path.as_ref().display().to_string(),
-        }
+    fn resolve_path<P: AsRef<Path>>(&self, path: P) -> Result<String, io::Error> {
+        let path = path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected valid utf-8 string"))?;
+
+        // trim `./` and `~/` since S3 doesn't accept ./ or ~/ as valid paths
+        let path = path.trim_start_matches("~/").trim_start_matches("./");
+
+        let prefix = self.config.prefix.clone().unwrap_or_default();
+        let prefix = prefix.trim_start_matches("~/").trim_start_matches("./");
+
+        Ok(format!("{prefix}/{path}"))
     }
 
     async fn s3_obj_to_blob(&self, entry: &Object) -> Result<Option<Blob>, io::Error> {
@@ -197,7 +205,7 @@ impl RemiStorageService for StorageService {
         )
     )]
     async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
-        let normalized = self.resolve_path(path);
+        let normalized = self.resolve_path(path)?;
 
         #[cfg(feature = "log")]
         log::trace!("opening file [{normalized}]");
@@ -246,7 +254,7 @@ impl RemiStorageService for StorageService {
         )
     )]
     async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
-        let normalized = self.resolve_path(path);
+        let normalized = self.resolve_path(path)?;
 
         #[cfg(feature = "log")]
         log::trace!("locating file [{normalized}]");
@@ -325,7 +333,7 @@ impl RemiStorageService for StorageService {
                 .list_objects_v2()
                 .bucket(&self.config.bucket)
                 .max_keys(1000)
-                .prefix(self.resolve_path(path)),
+                .prefix(self.resolve_path(path)?),
 
             None => self.client.list_objects_v2().bucket(&self.config.bucket).max_keys(1000),
         };
@@ -450,7 +458,7 @@ impl RemiStorageService for StorageService {
         self.client
             .delete_object()
             .bucket(&self.config.bucket)
-            .key(self.resolve_path(path))
+            .key(self.resolve_path(path)?)
             .send()
             .await
             .map(|_| ())
@@ -473,7 +481,7 @@ impl RemiStorageService for StorageService {
             .client
             .head_object()
             .bucket(&self.config.bucket)
-            .key(self.resolve_path(path))
+            .key(self.resolve_path(path)?)
             .send();
 
         match fut.await {
@@ -507,7 +515,7 @@ impl RemiStorageService for StorageService {
         )
     )]
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
-        let normalized = self.resolve_path(path);
+        let normalized = self.resolve_path(path)?;
         let content_type = options.content_type.unwrap_or(DEFAULT_CONTENT_TYPE.into());
 
         #[cfg(feature = "log")]
@@ -549,4 +557,43 @@ impl RemiStorageService for StorageService {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_path() {
+        let storage = StorageService::new(S3StorageConfig::default());
+        assert_eq!(storage.resolve_path("./weow.txt").unwrap(), String::from("/weow.txt"));
+        assert_eq!(storage.resolve_path("~/weow.txt").unwrap(), String::from("/weow.txt"));
+        assert_eq!(storage.resolve_path("weow.txt").unwrap(), String::from("/weow.txt"));
+        assert_eq!(
+            storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
+            String::from("/weow/fluff/wooo.exe")
+        );
+
+        let storage = StorageService::new(S3StorageConfig {
+            prefix: Some(String::from("/wow/epic/sauce")),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            storage.resolve_path("./weow.txt").unwrap(),
+            String::from("/wow/epic/sauce/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow.txt").unwrap(),
+            String::from("/wow/epic/sauce/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("weow.txt").unwrap(),
+            String::from("/wow/epic/sauce/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
+            String::from("/wow/epic/sauce/weow/fluff/wooo.exe")
+        );
+    }
+}
