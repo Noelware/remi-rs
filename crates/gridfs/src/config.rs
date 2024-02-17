@@ -48,8 +48,8 @@ pub struct StorageConfig {
     pub write_concern: Option<WriteConcern>,
 
     /// Configure the [`ClientOptions`] that allows to connect to a MongoDB server.
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
-    pub client_options: Option<ClientOptions>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing))]
+    pub client_options: ClientOptions,
 
     /// Specifies the [`ReadConcern`] for isolation for when reading documents from the GridFS store. Read the
     /// [`MongoDB` documentation](https://www.mongodb.com/docs/manual/reference/write-concern) for more information.
@@ -82,6 +82,7 @@ impl From<StorageConfig> for GridFsBucketOptions {
 }
 
 #[cfg(feature = "serde")]
+#[allow(unused)]
 fn serialize_selection_criteria<S: ::serde::ser::Serializer>(
     value: &Option<SelectionCriteria>,
     serializer: S,
