@@ -23,7 +23,12 @@
 
 set -e
 
-crates=("remi" "remi-fs" "remi-s3" "remi-azure")
+if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+    echo "missing [CARGO_REGISTRY_TOKEN] env"
+    exit 1
+fi
+
+crates=("remi" "remi-fs" "remi-s3" "remi-azure" "remi-gridfs")
 
 function remi::cargo::publish {
     if [ -z "${CARGO_REGISTRY_TOKEN}" ]; then
@@ -33,7 +38,7 @@ function remi::cargo::publish {
 
     for package in "${crates[@]}"; do
         echo "[remi:cargo:publish] Publishing package $package"
-        cargo publish --package "$package"
+        cargo publish --package "$package" --token "$CARGO_REGISTRY_TOKEN"
         sleep 5 # do even more sleeping
     done
 }
