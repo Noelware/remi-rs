@@ -162,14 +162,14 @@ impl remi::StorageService for StorageService {
         let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
-        ::tracing::info!(remi.service = "gridfs", file = %path.display(), "opening file");
+        ::tracing::info!(remi.service = "gridfs", file = %path, "opening file");
 
         #[cfg(feature = "log")]
-        ::log::info!("opening file [{}]", path.display());
+        ::log::info!("opening file [{}]", path);
 
         let mut cursor = self
             .0
-            .find(doc! { "filename": path }, GridFsFindOptions::default())
+            .find(doc! { "filename": &path }, GridFsFindOptions::default())
             .await?;
 
         let advanced = cursor.advance().await?;
@@ -177,12 +177,12 @@ impl remi::StorageService for StorageService {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
                 remi.service = "gridfs",
-                file = %path.display(),
+                file = %path,
                 "file doesn't exist in GridFS"
             );
 
             #[cfg(feature = "log")]
-            ::log::warn!("file [{}] doesn't exist in GridFS", path.display());
+            ::log::warn!("file [{}] doesn't exist in GridFS", path);
 
             return Ok(None);
         }
@@ -227,18 +227,18 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "tracing")]
         ::tracing::info!(
             remi.service = "gridfs",
-            file = %path.display(),
+            file = %path,
             "getting file metadata for file"
         );
 
         #[cfg(feature = "log")]
-        ::log::info!("getting file metadata for file [{}]", path.display());
+        ::log::info!("getting file metadata for file [{}]", path);
 
         let mut cursor = self
             .0
             .find(
                 doc! {
-                    "filename": path,
+                    "filename": &path,
                 },
                 GridFsFindOptions::default(),
             )
@@ -248,10 +248,10 @@ impl remi::StorageService for StorageService {
         let has_advanced = cursor.advance().await?;
         if !has_advanced {
             #[cfg(feature = "tracing")]
-            ::tracing::warn!(remi.service = "gridfs", file = %path.display(), "file doesn't exist");
+            ::tracing::warn!(remi.service = "gridfs", file = %path, "file doesn't exist");
 
             #[cfg(feature = "log")]
-            ::log::warn!("file [{}] doesn't exist", path.display());
+            ::log::warn!("file [{}] doesn't exist", path);
 
             return Ok(None);
         }
@@ -350,16 +350,16 @@ impl remi::StorageService for StorageService {
         let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
-        ::tracing::info!(remi.service = "gridfs", file = %path.display(), "deleting file");
+        ::tracing::info!(remi.service = "gridfs", file = %path, "deleting file");
 
         #[cfg(feature = "log")]
-        ::log::info!("deleting file [{}]", path.display());
+        ::log::info!("deleting file [{}]", path);
 
         let mut cursor = self
             .0
             .find(
                 doc! {
-                    "filename": path,
+                    "filename": &path,
                 },
                 GridFsFindOptions::default(),
             )
@@ -369,10 +369,10 @@ impl remi::StorageService for StorageService {
         let has_advanced = cursor.advance().await?;
         if !has_advanced {
             #[cfg(feature = "tracing")]
-            ::tracing::warn!(remi.service = "gridfs", file = %path.display(), "file doesn't exist");
+            ::tracing::warn!(remi.service = "gridfs", file = %path, "file doesn't exist");
 
             #[cfg(feature = "log")]
-            ::log::warn!("file [{}] doesn't exist", path.display());
+            ::log::warn!("file [{}] doesn't exist", path);
 
             return Ok(());
         }
@@ -419,12 +419,12 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "tracing")]
         ::tracing::info!(
             remi.service = "gridfs",
-            file = %path.display(),
+            file = %path,
             "uploading file to GridFS..."
         );
 
         #[cfg(feature = "log")]
-        ::log::info!("uploading file [{}] to GridFS", path.display());
+        ::log::info!("uploading file [{}] to GridFS", path);
 
         let mut stream = self.0.open_upload_stream(path, None);
         stream.write_all(&options.data[..]).await?;
