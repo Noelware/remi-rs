@@ -25,5 +25,5 @@
 mod config;
 mod service;
 
-pub use crate::config::*;
-pub use crate::service::*;
+pub use config::*;
+pub use service::*;

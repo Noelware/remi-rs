@@ -26,10 +26,9 @@ use aws_sdk_s3::{
     types::{BucketCannedAcl, Object, ObjectCannedAcl},
     Client, Config,
 };
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
 use std::{io, path::Path};
-use tokio::io::{AsyncReadExt, BufReader};
 
 const DEFAULT_CONTENT_TYPE: &str = "application/octet; charset=utf-8";
 
@@ -88,7 +87,6 @@ impl StorageService {
 
         // trim `./` and `~/` since S3 doesn't accept ./ or ~/ as valid paths
         let path = path.trim_start_matches("~/").trim_start_matches("./");
-
         let prefix = self.config.prefix.clone().unwrap_or_default();
         let prefix = prefix.trim_start_matches("~/").trim_start_matches("./");
 
@@ -222,13 +220,10 @@ impl RemiStorageService for StorageService {
 
         match fut.await {
             Ok(object) => {
-                let mut bytes = BytesMut::new();
                 let stream = object.body;
-                let mut reader = BufReader::new(stream.into_async_read());
+                let data = stream.collect().await.map_err(|e| to_io_error!(e))?.into_bytes();
 
-                reader.read_exact(&mut bytes).await.map_err(|x| to_io_error!(x))?;
-
-                Ok(Some(bytes.into()))
+                Ok(Some(data))
             }
 
             Err(e) => {
@@ -278,20 +273,16 @@ impl RemiStorageService for StorageService {
                     .map(|dt| dt.to_millis().expect("cant convert into millis") as u128);
 
                 // Read the entire body of the object itself
-                let mut bytes = BytesMut::new();
-                let body = object.body;
-                {
-                    let mut reader = BufReader::new(body.into_async_read());
-                    reader.read_exact(&mut bytes).await.map_err(|x| to_io_error!(x))?;
-                }
+                let stream = object.body;
+                let data = stream.collect().await.map_err(|e| to_io_error!(e))?.into_bytes();
+                let size = data.len();
 
-                let size = bytes.len();
                 Ok(Some(Blob::File(File {
                     last_modified_at,
                     content_type,
                     created_at: None,
                     is_symlink: false,
-                    data: bytes.into(),
+                    data,
                     name: normalized.clone(),
                     path: format!("s3://{normalized}"),
                     size,
@@ -335,7 +326,14 @@ impl RemiStorageService for StorageService {
                 .max_keys(1000)
                 .prefix(self.resolve_path(path)?),
 
-            None => self.client.list_objects_v2().bucket(&self.config.bucket).max_keys(1000),
+            None => {
+                let mut req = self.client.list_objects_v2().bucket(&self.config.bucket).max_keys(1000);
+                if let Some(ref prefix) = self.config.prefix {
+                    req = req.prefix(prefix.trim_start_matches("~/").trim_end_matches("./"));
+                }
+
+                req
+            }
         };
 
         loop {
