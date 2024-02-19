@@ -25,7 +25,7 @@ use bytes::{Bytes, BytesMut};
 use futures_util::{AsyncWriteExt, StreamExt};
 use mongodb::{
     bson::{doc, raw::ValueAccessErrorKind, Bson, RawDocument},
-    options::GridFsFindOptions,
+    options::{GridFsFindOptions, GridFsUploadOptions},
     Client, Database, GridFsBucket,
 };
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
@@ -53,12 +53,18 @@ fn value_access_err_to_error(error: mongodb::bson::raw::ValueAccessError) -> mon
 fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::error::Error> {
     let filename = doc.get_str("filename").map_err(value_access_err_to_error)?;
     let length = doc.get_i64("length").map_err(value_access_err_to_error)?;
-    let content_type = doc.get_str("contentType").map_err(value_access_err_to_error)?;
     let created_at = doc.get_datetime("uploadDate").map_err(value_access_err_to_error)?;
+    let content_type = match doc.get_str("contentType") {
+        Ok(res) => Some(res),
+        Err(e) => match e.kind {
+            ValueAccessErrorKind::NotPresent => None,
+            _ => return Err(value_access_err_to_error(e)),
+        },
+    };
 
     Ok(File {
         last_modified_at: None,
-        content_type: Some(content_type.to_owned()),
+        content_type: content_type.map(String::from),
         created_at: if created_at.timestamp_millis() < 0 {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(remi.service = "gridfs", %filename, "`created_at` timestamp was negative");
@@ -95,14 +101,20 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::er
 pub type GridfsStorageService = StorageService;
 
 #[derive(Debug, Clone)]
-pub struct StorageService(GridFsBucket);
+pub struct StorageService {
+    config: Option<StorageConfig>,
+    bucket: GridFsBucket,
+}
 
 impl StorageService {
     /// Creates a new [`StorageService`] which uses the [`StorageConfig`] as a way to create
     /// the inner [`GridFsBucket`].
     pub fn new(db: Database, config: StorageConfig) -> StorageService {
-        let bucket = db.gridfs_bucket(Some(config.into()));
-        StorageService::with_bucket(bucket)
+        let bucket = db.gridfs_bucket(Some(config.clone().into()));
+        StorageService {
+            config: Some(config),
+            bucket,
+        }
     }
 
     /// Return a new [`StorageService`] from a constructed [`Client`].
@@ -124,7 +136,7 @@ impl StorageService {
 
     /// Uses a preconfigured [`GridFsBucket`] as the underlying bucket.
     pub fn with_bucket(bucket: GridFsBucket) -> StorageService {
-        StorageService(bucket)
+        StorageService { config: None, bucket }
     }
 
     fn resolve_path<P: AsRef<Path>>(&self, path: P) -> Result<String, mongodb::error::Error> {
@@ -168,7 +180,7 @@ impl remi::StorageService for StorageService {
         ::log::info!("opening file [{}]", path);
 
         let mut cursor = self
-            .0
+            .bucket
             .find(doc! { "filename": &path }, GridFsFindOptions::default())
             .await?;
 
@@ -189,7 +201,7 @@ impl remi::StorageService for StorageService {
 
         let doc = cursor.current();
         let stream = self
-            .0
+            .bucket
             .open_download_stream(Bson::ObjectId(
                 doc.get_object_id("_id").map_err(value_access_err_to_error)?,
             ))
@@ -235,7 +247,7 @@ impl remi::StorageService for StorageService {
         ::log::info!("getting file metadata for file [{}]", path);
 
         let mut cursor = self
-            .0
+            .bucket
             .find(
                 doc! {
                     "filename": &path,
@@ -295,12 +307,12 @@ impl remi::StorageService for StorageService {
             return Ok(vec![]);
         }
 
-        let mut cursor = self.0.find(doc!(), GridFsFindOptions::default()).await?;
+        let mut cursor = self.bucket.find(doc!(), GridFsFindOptions::default()).await?;
         let mut blobs = vec![];
         while cursor.advance().await? {
             let doc = cursor.current();
             let stream = self
-                .0
+                .bucket
                 .open_download_stream(Bson::ObjectId(
                     doc.get_object_id("_id").map_err(value_access_err_to_error)?,
                 ))
@@ -356,7 +368,7 @@ impl remi::StorageService for StorageService {
         ::log::info!("deleting file [{}]", path);
 
         let mut cursor = self
-            .0
+            .bucket
             .find(
                 doc! {
                     "filename": &path,
@@ -380,7 +392,7 @@ impl remi::StorageService for StorageService {
         let doc = cursor.current();
         let oid = doc.get_object_id("_id").map_err(value_access_err_to_error)?;
 
-        self.0.delete(Bson::ObjectId(oid)).await
+        self.bucket.delete(Bson::ObjectId(oid)).await
     }
 
     #[cfg_attr(
@@ -426,7 +438,23 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "log")]
         ::log::info!("uploading file [{}] to GridFS", path);
 
-        let mut stream = self.0.open_upload_stream(path, None);
+        let opts = GridFsUploadOptions::builder()
+            .chunk_size_bytes(Some(
+                self.config.clone().unwrap_or_default().chunk_size.unwrap_or(255 * 1024),
+            ))
+            .metadata(match options.metadata.is_empty() {
+                true => None,
+                false => Some(
+                    options
+                        .metadata
+                        .into_iter()
+                        .map(|(k, v)| (k, Bson::String(v)))
+                        .collect(),
+                ),
+            })
+            .build();
+
+        let mut stream = self.bucket.open_upload_stream(path, Some(opts));
         stream.write_all(&options.data[..]).await?;
         stream.close().await.map_err(From::from)
 
