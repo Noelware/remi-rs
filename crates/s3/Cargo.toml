@@ -43,7 +43,7 @@ aws-sdk-s3 = { version = "1.15.0", features = ["behavior-version-latest"] }
 bytes = "1.5.0"
 log = { version = "0.4.20", optional = true }
 remi = { path = "../../remi", version = "0.6.3" }
-serde = { version = "1.0.196", features = ["derive"], optional = true }
+serde = { version = "1.0.197", features = ["derive"], optional = true }
 tracing = { version = "0.1.40", optional = true }
 
 [package.metadata.docs.rs]

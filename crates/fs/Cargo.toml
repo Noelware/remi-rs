@@ -48,7 +48,7 @@ futures = "0.3.30"
 infer = { version = "0.15.0", default-features = false, optional = true }
 log = { version = "0.4.20", optional = true }
 remi = { path = "../../remi", version = "0.6.3" }
-serde = { version = "1.0.196", features = ["derive"], optional = true }
+serde = { version = "1.0.197", features = ["derive"], optional = true }
 serde_json = { version = "1.0.113", optional = true }
 serde_yaml = { version = "0.9.32", optional = true }
 tokio = { version = "1.36.0", features = ["fs", "io-util"] }
