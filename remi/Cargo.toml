@@ -30,5 +30,5 @@ rust-version.workspace = true
 
 [dependencies]
 async-trait = "0.1.78"
-bytes = "1.5.0"
+bytes = "1.6.0"
 futures = "0.3.30"
