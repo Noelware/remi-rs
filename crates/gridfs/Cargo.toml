@@ -35,7 +35,7 @@ serde = ["dep:serde"]
 log = ["dep:log"]
 
 [dependencies]
-async-trait = "0.1.78"
+async-trait = "0.1.79"
 bytes = "1.6.0"
 futures-util = "0.3.30"
 log = { version = "0.4.21", optional = true }
