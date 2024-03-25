@@ -50,7 +50,7 @@ log = { version = "0.4.21", optional = true }
 remi = { path = "../../remi", version = "0.6.3" }
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 serde_json = { version = "1.0.114", optional = true }
-serde_yaml = { version = "0.9.33", optional = true }
+serde_yaml = { version = "0.9.34", optional = true }
 tokio = { version = "1.36.0", features = ["fs", "io-util"] }
 tracing = { version = "0.1.40", optional = true }
 
