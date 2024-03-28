@@ -51,14 +51,14 @@ remi = { path = "../../remi", version = "0.6.3" }
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 serde_json = { version = "1.0.115", optional = true }
 serde_yaml = { version = "0.9.34", optional = true }
-tokio = { version = "1.36.0", features = ["fs", "io-util"] }
+tokio = { version = "1.37.0", features = ["fs", "io-util"] }
 tracing = { version = "0.1.40", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dev-dependencies]
-tokio = { version = "1.36.0", features = ["macros", "rt", "fs", "io-util"] }
+tokio = { version = "1.37.0", features = ["macros", "rt", "fs", "io-util"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 
