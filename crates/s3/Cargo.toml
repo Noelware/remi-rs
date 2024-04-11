@@ -35,7 +35,7 @@ serde = ["dep:serde"]
 log = ["dep:log"]
 
 [dependencies]
-async-trait = "0.1.79"
+async-trait = "0.1.80"
 aws-config = "1.1.10"
 aws-credential-types = "1.1.8"
 aws-sdk-s3 = { version = "1.22.0", features = ["behavior-version-latest"] }
