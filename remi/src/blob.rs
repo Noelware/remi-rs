@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 use bytes::Bytes;
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 /// Represents a file or directory from any storage service.
 pub enum Blob {
@@ -30,13 +30,6 @@ pub enum Blob {
     /// Representation of a [`Blob`] that is a file.
     File(File),
 }
-
-/// Representation of a [`Blob`] that is a file.
-#[deprecated(
-    since = "0.5.0",
-    note = "`FileBlob` was renamed to `File`, this will be removed in v0.7.0"
-)]
-pub type FileBlob = File;
 
 /// Representation of a [`Blob`] that is a file.
 #[derive(Debug, Clone)]
@@ -52,6 +45,10 @@ pub struct File {
     /// Returns a `u128` of when this file was last created, in milliseconds
     /// from January 1st, 1970.
     pub created_at: Option<u128>,
+
+    /// Mapping of a file's metadata that the file can retrieve and be used for
+    /// external applications.
+    pub metadata: HashMap<String, String>,
 
     /// Whether or not if this file was a symlink or not. This is only used
     /// in the filesystem crate of remi.
@@ -84,13 +81,6 @@ impl Display for File {
         ))
     }
 }
-
-/// Representation of a [`Blob`] that is a directory.
-#[deprecated(
-    since = "0.5.0",
-    note = "`DirectoryBlob` was renamed to `Directory`, this will be removed in v0.7.0"
-)]
-pub type DirectoryBlob = Directory;
 
 /// Represents a directory that was located somewhere.
 #[derive(Debug, Clone)]

@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::S3StorageConfig;
+use crate::StorageConfig;
 use async_trait::async_trait;
 use aws_sdk_s3::{
     primitives::ByteStream,
@@ -28,32 +28,20 @@ use aws_sdk_s3::{
 };
 use bytes::Bytes;
 use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
-use std::{io, path::Path};
+use std::path::Path;
 
 const DEFAULT_CONTENT_TYPE: &str = "application/octet; charset=utf-8";
-
-macro_rules! to_io_error {
-    ($x:expr) => {
-        ::std::io::Error::new(::std::io::ErrorKind::Other, $x)
-    };
-}
-
-#[deprecated(
-    since = "0.5.0",
-    note = "`S3StorageService` has been renamed to `StorageService`, this will be removed in v0.7.0"
-)]
-pub type S3StorageService = StorageService;
 
 /// Represents an implementation of [`StorageService`] for Amazon Simple Storage Service.
 #[derive(Debug, Clone)]
 pub struct StorageService {
     client: Client,
-    config: S3StorageConfig,
+    config: StorageConfig,
 }
 
 impl StorageService {
     /// Creates a [`StorageService`] with a given storage service configuration.
-    pub fn new(config: S3StorageConfig) -> StorageService {
+    pub fn new(config: StorageConfig) -> StorageService {
         let client = Client::from_conf(From::from(config.clone()));
         StorageService { client, config }
     }
@@ -64,7 +52,7 @@ impl StorageService {
         let client = Client::from_conf(config.into());
         StorageService {
             client,
-            config: S3StorageConfig::default(),
+            config: StorageConfig::default(),
         }
     }
 
@@ -72,18 +60,18 @@ impl StorageService {
     /// actual SDK client. This is useful if you used the [`StorageService::with_sdk_conf`]
     /// method. If you wish to modify the SDK client with a [`S3StorageConfig`],
     /// then use the [`S3StorageConfig::new`] method instead.
-    pub fn with_config(self, config: S3StorageConfig) -> StorageService {
+    pub fn with_config(self, config: StorageConfig) -> StorageService {
         StorageService {
             client: self.client,
             config,
         }
     }
 
-    fn resolve_path<P: AsRef<Path>>(&self, path: P) -> Result<String, io::Error> {
+    fn resolve_path<P: AsRef<Path>>(&self, path: P) -> crate::Result<String> {
         let path = path
             .as_ref()
             .to_str()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected valid utf-8 string"))?;
+            .ok_or_else(|| crate::error::lib("expected valud a utf-8 string as the path"))?;
 
         // trim `./` and `~/` since S3 doesn't accept ./ or ~/ as valid paths
         let path = path.trim_start_matches("~/").trim_start_matches("./");
@@ -93,7 +81,7 @@ impl StorageService {
         Ok(format!("{prefix}/{path}"))
     }
 
-    async fn s3_obj_to_blob(&self, entry: &Object) -> Result<Option<Blob>, io::Error> {
+    async fn s3_obj_to_blob(&self, entry: &Object) -> crate::Result<Option<Blob>> {
         match entry.key() {
             Some(key) if key.ends_with('/') => Ok(Some(Blob::Directory(Directory {
                 created_at: None,
@@ -113,7 +101,7 @@ impl RemiStorageService for StorageService {
     // and this can narrow down.
     //
     // TODO(@auguwu): this can be a flat error if we could do?
-    type Error = io::Error;
+    type Error = crate::Error;
     const NAME: &'static str = "remi:s3";
 
     #[cfg_attr(
@@ -127,7 +115,7 @@ impl RemiStorageService for StorageService {
             )
         )
     )]
-    async fn init(&self) -> io::Result<()> {
+    async fn init(&self) -> crate::Result<()> {
         #[cfg(feature = "log")]
         log::info!("ensuring that bucket [{}] exists!", self.config.bucket);
 
@@ -138,7 +126,7 @@ impl RemiStorageService for StorageService {
             "ensuring that bucket exists"
         );
 
-        let output = self.client.list_buckets().send().await.map_err(|x| to_io_error!(x))?;
+        let output = self.client.list_buckets().send().await?;
         if !output.buckets().iter().any(|x| match x.name() {
             Some(name) => name == self.config.bucket,
             None => false,
@@ -184,8 +172,7 @@ impl RemiStorageService for StorageService {
 
                     #[cfg(feature = "tracing")]
                     tracing::trace!(remi.service = "s3", bucket = self.config.bucket, "{output:?}");
-                })
-                .map_err(|x| to_io_error!(x))?;
+                })?;
         }
 
         Ok(())
@@ -202,7 +189,7 @@ impl RemiStorageService for StorageService {
             )
         )
     )]
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Bytes>> {
+    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> crate::Result<Option<Bytes>> {
         let normalized = self.resolve_path(path)?;
 
         #[cfg(feature = "log")]
@@ -221,7 +208,7 @@ impl RemiStorageService for StorageService {
         match fut.await {
             Ok(object) => {
                 let stream = object.body;
-                let data = stream.collect().await.map_err(|e| to_io_error!(e))?.into_bytes();
+                let data = stream.collect().await?.into_bytes();
 
                 Ok(Some(data))
             }
@@ -232,7 +219,7 @@ impl RemiStorageService for StorageService {
                     return Ok(None);
                 }
 
-                Err(to_io_error!(err))
+                Err(err.into())
             }
         }
     }
@@ -248,7 +235,7 @@ impl RemiStorageService for StorageService {
             )
         )
     )]
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<Option<Blob>> {
+    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> crate::Result<Option<Blob>> {
         let normalized = self.resolve_path(path)?;
 
         #[cfg(feature = "log")]
@@ -274,11 +261,12 @@ impl RemiStorageService for StorageService {
 
                 // Read the entire body of the object itself
                 let stream = object.body;
-                let data = stream.collect().await.map_err(|e| to_io_error!(e))?.into_bytes();
+                let data = stream.collect().await?.into_bytes();
                 let size = data.len();
 
                 Ok(Some(Blob::File(File {
                     last_modified_at,
+                    metadata: object.metadata.clone().unwrap_or_default(),
                     content_type,
                     created_at: None,
                     is_symlink: false,
@@ -295,7 +283,7 @@ impl RemiStorageService for StorageService {
                     return Ok(None);
                 }
 
-                Err(to_io_error!(err))
+                Err(err.into())
             }
         }
     }
@@ -315,7 +303,7 @@ impl RemiStorageService for StorageService {
         &self,
         path: Option<P>,
         options: Option<ListBlobsRequest>,
-    ) -> io::Result<Vec<Blob>> {
+    ) -> crate::Result<Vec<Blob>> {
         let options = options.unwrap_or_default();
         let mut blobs = Vec::new();
         let mut req = match path {
@@ -337,7 +325,7 @@ impl RemiStorageService for StorageService {
         };
 
         loop {
-            let resp = req.clone().send().await.map_err(|x| to_io_error!(x))?;
+            let resp = req.clone().send().await?;
             let entries = resp.contents();
 
             for entry in entries {
@@ -452,7 +440,7 @@ impl RemiStorageService for StorageService {
             )
         )
     )]
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<()> {
+    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> crate::Result<()> {
         self.client
             .delete_object()
             .bucket(&self.config.bucket)
@@ -460,7 +448,7 @@ impl RemiStorageService for StorageService {
             .send()
             .await
             .map(|_| ())
-            .map_err(|x| to_io_error!(x))
+            .map_err(From::from)
     }
 
     #[cfg_attr(
@@ -474,7 +462,7 @@ impl RemiStorageService for StorageService {
             )
         )
     )]
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> io::Result<bool> {
+    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> crate::Result<bool> {
         let fut = self
             .client
             .head_object()
@@ -496,7 +484,7 @@ impl RemiStorageService for StorageService {
                     return Ok(false);
                 }
 
-                return Err(to_io_error!(inner));
+                Err(inner.into())
             }
         }
     }
@@ -512,7 +500,7 @@ impl RemiStorageService for StorageService {
             )
         )
     )]
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> io::Result<()> {
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> crate::Result<()> {
         let normalized = self.resolve_path(path)?;
         let content_type = options.content_type.unwrap_or(DEFAULT_CONTENT_TYPE.into());
 
@@ -550,7 +538,7 @@ impl RemiStorageService for StorageService {
             .send()
             .await
             .map(|_| ())
-            .map_err(|x| to_io_error!(x))
+            .map_err(From::from)
     }
 }
 
@@ -560,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_resolve_path() {
-        let storage = StorageService::new(S3StorageConfig::default());
+        let storage = StorageService::new(StorageConfig::default());
         assert_eq!(storage.resolve_path("./weow.txt").unwrap(), String::from("/weow.txt"));
         assert_eq!(storage.resolve_path("~/weow.txt").unwrap(), String::from("/weow.txt"));
         assert_eq!(storage.resolve_path("weow.txt").unwrap(), String::from("/weow.txt"));
@@ -569,7 +557,7 @@ mod tests {
             String::from("/weow/fluff/wooo.exe")
         );
 
-        let storage = StorageService::new(S3StorageConfig {
+        let storage = StorageService::new(StorageConfig {
             prefix: Some(String::from("/wow/epic/sauce")),
             ..Default::default()
         });

@@ -22,18 +22,26 @@
 // this is not available due to issues (so far), might resolve in the future
 
 use aws_sdk_s3::{
-    error::SdkError,
     operation::{
         create_bucket::CreateBucketError, delete_object::DeleteObjectError, get_object::GetObjectError,
-        head_object::HeadObjectError, list_objects_v2::ListObjectsV2Error, put_object::PutObjectError,
+        head_object::HeadObjectError, list_buckets::ListBucketsError, list_objects_v2::ListObjectsV2Error,
+        put_object::PutObjectError,
     },
     primitives::SdkBody,
 };
 use aws_smithy_runtime_api::{
+    client::result::SdkError,
     client::result::{ConstructionFailure, DispatchFailure, ResponseError, TimeoutError},
     http::Response,
 };
-use std::fmt::Debug;
+use std::{borrow::Cow, fmt::Debug};
+
+/// Type alias for [`std::result::Result`]<`T`, [`Error`]>.
+pub type Result<T> = std::result::Result<T, Error>;
+
+pub(crate) fn lib<T: Into<Cow<'static, str>>>(msg: T) -> Error {
+    Error::Library(msg.into())
+}
 
 /// Represents a generalised error that inlines all service errors and uses [`Response`]<[`SdkBody`]>
 /// as the response type.
@@ -53,6 +61,10 @@ pub enum Error {
     /// A response was received but it was not parseable according to the protocol. (for example, the
     /// server hung up without sending a complete response)
     Response(ResponseError<Response<SdkBody>>),
+
+    /// Amazon S3 was unable to list buckets. This happens when you call [`StorageService::init`][crate::StorageService::init],
+    /// since the library performs checks whenever if the bucket exists or not and it needs the ability to check.
+    ListBuckets(ListBucketsError),
 
     /// Amazon S3 was unable to create the bucket for some reason, this will never hit the
     /// [`CreateBucketError::BucketAlreadyExists`] or [`CreateBucketError::BucketAlreadyOwnedByYou`]
@@ -101,6 +113,24 @@ pub enum Error {
     ///
     /// * this would be thrown from the [`StorageService::upload`][remi::StorageService::upload] trait method.
     PutObject(PutObjectError),
+
+    /// Occurs when an error occurred when transforming AWS S3's responses.
+    ByteStream(aws_sdk_s3::primitives::ByteStreamError),
+
+    /// Something that `remi-s3` has emitted on its own.
+    Library(Cow<'static, str>),
+}
+
+impl From<SdkError<ListBucketsError, Response<SdkBody>>> for Error {
+    fn from(error: SdkError<ListBucketsError, Response<SdkBody>>) -> Self {
+        match error {
+            SdkError::ConstructionFailure(err) => Self::ConstructionFailure(err),
+            SdkError::DispatchFailure(err) => Self::DispatchFailure(err),
+            SdkError::TimeoutError(err) => Self::TimeoutError(err),
+            SdkError::ResponseError(err) => Self::Response(err),
+            err => Error::ListBuckets(err.into_service_error()),
+        }
+    }
 }
 
 impl From<SdkError<CreateBucketError, Response<SdkBody>>> for Error {
@@ -124,6 +154,12 @@ impl From<SdkError<GetObjectError, Response<SdkBody>>> for Error {
             SdkError::ResponseError(err) => Self::Response(err),
             err => Error::GetObject(err.into_service_error()),
         }
+    }
+}
+
+impl From<GetObjectError> for Error {
+    fn from(value: GetObjectError) -> Self {
+        Self::GetObject(value)
     }
 }
 
@@ -163,6 +199,12 @@ impl From<SdkError<HeadObjectError, Response<SdkBody>>> for Error {
     }
 }
 
+impl From<HeadObjectError> for Error {
+    fn from(value: HeadObjectError) -> Self {
+        Self::HeadObject(value)
+    }
+}
+
 impl From<SdkError<PutObjectError, Response<SdkBody>>> for Error {
     fn from(error: SdkError<PutObjectError, Response<SdkBody>>) -> Self {
         match error {
@@ -172,5 +214,11 @@ impl From<SdkError<PutObjectError, Response<SdkBody>>> for Error {
             SdkError::ResponseError(err) => Self::Response(err),
             err => Error::PutObject(err.into_service_error()),
         }
+    }
+}
+
+impl From<aws_sdk_s3::primitives::ByteStreamError> for Error {
+    fn from(value: aws_sdk_s3::primitives::ByteStreamError) -> Self {
+        Self::ByteStream(value)
     }
 }

@@ -21,12 +21,6 @@
 
 use mongodb::options::{ClientOptions, GridFsBucketOptions, ReadConcern, SelectionCriteria, WriteConcern};
 
-#[deprecated(
-    since = "0.5.0",
-    note = "`GridfsStorageConfig` has been renamed to `StorageConfig`, which will be removed in v0.7.0"
-)]
-pub type GridfsStorageConfig = StorageConfig;
-
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StorageConfig {

@@ -176,6 +176,7 @@ impl remi::StorageService for StorageService {
                         .as_millis(),
                 )
             },
+            metadata: props.blob.metadata.unwrap_or_default(),
             content_type: Some(props.blob.properties.content_type),
             created_at: {
                 let created_at: SystemTime = props.blob.properties.creation_time.into();
@@ -256,6 +257,7 @@ impl remi::StorageService for StorageService {
                                 .as_millis(),
                         )
                     },
+                    metadata: blob.metadata.clone().unwrap_or_default(),
                     content_type: Some(blob.properties.content_type.clone()),
                     created_at: {
                         let created_at: SystemTime = blob.properties.creation_time.into();

@@ -19,21 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use std::path::{Path, PathBuf};
-
-/// Represents the main configuration of using the `StorageService` implementation of remi-fs.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Config {
-    /// [`PathBuf`] to the directory where `remi-fs` can locate files from with the `./` prefix.
-    pub directory: PathBuf,
-}
-
-impl Config {
-    /// Creates a new [`Config`] instance.
-    pub fn new<P: AsRef<Path>>(path: P) -> Config {
-        Config {
-            directory: path.as_ref().into(),
-        }
-    }
-}
+// This file is intentionally empty since we don't really know if we should
+// do a `Metadata` struct that is just a `HashMap` of key/value pairs with
+// a `Value` enum to wrap possible values that a storage service can do.

@@ -40,12 +40,6 @@ use async_std::{fs, io::*};
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-#[deprecated(
-    since = "0.5.0",
-    note = "`FilesystemStorageService` has been renamed to `StorageService`, this will be removed in v0.7.0"
-)]
-pub type FilesystemStorageService = StorageService;
-
 /// Represents an implementation of a [`StorageService`](remi::StorageService) for the
 /// local filesystem.
 #[derive(Clone)]
@@ -194,6 +188,7 @@ impl StorageService {
         Ok(File {
             last_modified_at,
             content_type: Some(content_type),
+            metadata: Default::default(),
             created_at,
             is_symlink,
             data: bytes,
@@ -235,6 +230,7 @@ impl StorageService {
         Ok(File {
             last_modified_at,
             content_type: Some(content_type),
+            metadata: Default::default(),
             created_at,
             is_symlink,
             data: bytes,

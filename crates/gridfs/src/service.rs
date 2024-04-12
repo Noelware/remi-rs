@@ -29,7 +29,7 @@ use mongodb::{
     Client, Database, GridFsBucket,
 };
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
-use std::{io, path::Path};
+use std::{collections::HashMap, io, path::Path};
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
 
 fn value_access_err_to_error(error: mongodb::bson::raw::ValueAccessError) -> mongodb::error::Error {
@@ -62,9 +62,25 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::er
         },
     };
 
+    // Convert `doc` into a HashMap that doesn't contain the properties we expect
+    // in a GridFS object.
+    //
+    // For brevity and compatibility with other storage services, we only use strings
+    // when including metadata.
+    let mut map = HashMap::new();
+    for ref_ in doc.into_iter() {
+        let (name, doc) = ref_?;
+        if name != "filename" || name != "length" || name != "uploadDate" || name != "contentType" {
+            if let Some(s) = doc.as_str() {
+                map.insert(name.into(), s.into());
+            }
+        }
+    }
+
     Ok(File {
         last_modified_at: None,
         content_type: content_type.map(String::from),
+        metadata: map,
         created_at: if created_at.timestamp_millis() < 0 {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(remi.service = "gridfs", %filename, "`created_at` timestamp was negative");
@@ -93,12 +109,6 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::er
         },
     })
 }
-
-#[deprecated(
-    since = "0.5.0",
-    note = "`GridfsStorageService` has been renamed to `StorageService`, this will be removed in v0.7.0"
-)]
-pub type GridfsStorageService = StorageService;
 
 #[derive(Debug, Clone)]
 pub struct StorageService {

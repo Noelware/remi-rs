@@ -29,7 +29,7 @@ use aws_sdk_s3::{
 /// Represents the main configuration struct to configure a [`S3StorageService`][crate::S3StorageService].
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct S3StorageConfig {
+pub struct StorageConfig {
     /// Whether if the S3 storage backend should enable AWSv4 signatures when requests
     /// come in or not.
     #[cfg_attr(feature = "serde", serde(default))]
@@ -87,8 +87,8 @@ pub struct S3StorageConfig {
     pub bucket: String,
 }
 
-impl From<S3StorageConfig> for aws_sdk_s3::Config {
-    fn from(config: S3StorageConfig) -> aws_sdk_s3::Config {
+impl From<StorageConfig> for aws_sdk_s3::Config {
+    fn from(config: StorageConfig) -> aws_sdk_s3::Config {
         let mut cfg = aws_sdk_s3::Config::builder();
         cfg.set_credentials_provider(Some(SharedCredentialsProvider::new(Credentials::new(
             &config.access_key_id,
@@ -107,80 +107,6 @@ impl From<S3StorageConfig> for aws_sdk_s3::Config {
         }
 
         cfg.region(config.region).build()
-    }
-}
-
-impl S3StorageConfig {
-    /// Sets the [`enable_signer_v4_requests`](S3StorageConfig::enable_signer_v4_requests) property
-    /// to whatever `enabled` is.
-    pub fn with_enable_signer_v4_requests(mut self, yes: bool) -> Self {
-        self.enable_signer_v4_requests = yes;
-        self
-    }
-
-    /// Sets the [`enforce_path_access_style`](S3StorageConfig::enforce_path_access_style) property
-    /// to what `enforce` is.
-    pub fn with_enforce_path_access_style(mut self, yes: bool) -> Self {
-        self.enforce_path_access_style = yes;
-        self
-    }
-
-    /// Sets the [`default_object_acl`](S3StorageConfig::default_object_acl) property
-    /// to what `acl` is.
-    pub fn with_default_object_acl(&mut self, acl: Option<ObjectCannedAcl>) -> &mut Self {
-        self.default_object_acl = acl;
-        self
-    }
-
-    /// Sets the [`default_bucket_acl`](S3StorageConfig::default_bucket_acl) property
-    /// to what `acl` is.
-    pub fn with_default_bucket_acl(&mut self, acl: Option<BucketCannedAcl>) -> &mut Self {
-        self.default_bucket_acl = acl;
-        self
-    }
-
-    /// Sets the [`secret_access_key`](S3StorageConfig::secret_access_key) property
-    /// to what `key` is.
-    pub fn with_secret_access_key<I: Into<String>>(&mut self, key: I) -> &mut Self {
-        self.secret_access_key = key.into();
-        self
-    }
-
-    /// Sets the [`access_key_id`](S3StorageConfig::access_key_id) property
-    /// to what `key` is.
-    pub fn with_access_key_id<I: Into<String>>(&mut self, key: I) -> &mut Self {
-        self.access_key_id = key.into();
-        self
-    }
-
-    /// Sets the [`app_name`](S3StorageConfig::app_name) property to what `name` is.
-    pub fn with_app_name<I: Into<String>>(&mut self, name: Option<I>) -> &mut Self {
-        self.app_name = name.map(|i| i.into());
-        self
-    }
-
-    /// Sets the [`endpoint`](S3StorageConfig::endpoint) property to what `endpoint` is.
-    pub fn with_endpoint<I: Into<String>>(&mut self, endpoint: Option<I>) -> &mut Self {
-        self.endpoint = endpoint.map(|i| i.into());
-        self
-    }
-
-    /// Sets the [`prefix`](S3StorageConfig::prefix) property to what `prefix` is.
-    pub fn with_prefix<I: Into<String>>(&mut self, prefix: Option<I>) -> &mut Self {
-        self.prefix = prefix.map(|i| i.into());
-        self
-    }
-
-    /// Sets the [`prefix`](S3StorageConfig::region) property to what `region` is.
-    pub fn with_region<I: Into<Region>>(&mut self, region: Option<I>) -> &mut Self {
-        self.region = region.map(|i| i.into());
-        self
-    }
-
-    /// Sets the [`bucket`](S3StorageConfig::prefix) property to what `bucket` is.
-    pub fn with_bucket<I: Into<String>>(&mut self, bucket: I) -> &mut Self {
-        self.bucket = bucket.into();
-        self
     }
 }
 

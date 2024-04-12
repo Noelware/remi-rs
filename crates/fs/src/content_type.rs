@@ -38,34 +38,6 @@ where
     }
 }
 
-/// A default implementation of a [`ContentTypeResolver`] that uses
-/// the [infer](https://docs.rs/infer) and [file-format](https://docs.rs/file-format) crates if the `file-format`
-/// crate feature is enabled.
-///
-/// This doesn't include checking for JSON or YAML formats (if the respected crate features are enabled),
-/// please use the new [`default_resolver`] function to do so.
-#[derive(Debug, Clone, Copy)]
-#[deprecated(
-    since = "0.5.0",
-    note = "please use the new `default_resolver` fn to implement `ContentTypeResolver`"
-)]
-pub struct DefaultContentTypeResolver;
-
-#[allow(deprecated)]
-impl ContentTypeResolver for DefaultContentTypeResolver {
-    #[cfg(not(feature = "file-format"))]
-    fn resolve(&self, _bytes: &[u8]) -> String {
-        "application/octet-stream".into()
-    }
-
-    #[cfg(feature = "file-format")]
-    fn resolve(&self, bytes: &[u8]) -> String {
-        infer::get(bytes)
-            .map(|ty| ty.mime_type().to_owned())
-            .unwrap_or(file_format::FileFormat::from_bytes(bytes).media_type().to_owned())
-    }
-}
-
 /// A default implementation of a [`ContentTypeResolver`].
 #[cfg(feature = "file-format")]
 pub fn default_resolver(data: &[u8]) -> String {

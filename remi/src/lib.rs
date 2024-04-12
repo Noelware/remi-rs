@@ -32,6 +32,7 @@ pub use async_trait::async_trait;
 pub use bytes::Bytes;
 
 mod blob;
+mod metadata;
 mod options;
 
 pub use blob::*;
@@ -48,15 +49,6 @@ pub trait StorageService: Send + Sync {
 
     /// The name of the storage service.
     const NAME: &'static str;
-
-    /// Returns the name of this [`StorageService`].
-    #[deprecated(
-        since = "0.5.0",
-        note = "use Self::NAME instead of the name() function, this will be removed in 0.7.0"
-    )]
-    fn name(&self) -> &'static str {
-        Self::NAME
-    }
 
     /// Optionally initialize this [`StorageService`] if it requires initialization,
     /// like creating a directory if it doesn't exist.

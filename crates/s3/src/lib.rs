@@ -21,9 +21,16 @@
 
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc = include_str!("../README.md")]
+#![allow(
+    // We are aware that the `Err` variant for crate::Error is very large
+    // and we can't really do anything about it.
+    clippy::result_large_err
+)]
 
 mod config;
+mod error;
 mod service;
 
 pub use config::*;
+pub use error::*;
 pub use service::*;
