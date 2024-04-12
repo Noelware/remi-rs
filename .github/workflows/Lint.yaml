@@ -96,3 +96,31 @@ jobs:
               with:
                 all-features: true
                 token: ${{secrets.GITHUB_TOKEN}}
+    cargo-deny:
+        name: '`cargo deny`'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install `cargo-deny`
+              uses: taiki-e/install-action@cargo-deny
+              with:
+                  tool: cargo-deny
+
+            - name: Run "cargo deny"
+              run: cargo deny check all
+    report-missing-deps:
+        name: Report Missing Dependencies
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install `cargo-machete`
+              uses: taiki-e/install-action@cargo-machete
+              with:
+                  tool: cargo-machete
+
+            - name: Run!
+              run: cargo machete
