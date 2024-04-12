@@ -34,7 +34,10 @@ use aws_smithy_runtime_api::{
     client::result::{ConstructionFailure, DispatchFailure, ResponseError, TimeoutError},
     http::Response,
 };
-use std::{borrow::Cow, fmt::Debug};
+use std::{
+    borrow::Cow,
+    fmt::{Debug, Display},
+};
 
 /// Type alias for [`std::result::Result`]<`T`, [`Error`]>.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -120,6 +123,39 @@ pub enum Error {
     /// Something that `remi-s3` has emitted on its own.
     Library(Cow<'static, str>),
 }
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Error as E;
+
+        match self {
+            E::ByteStream(err) => Display::fmt(err, f),
+            E::Response(_) => f.write_str("response was received but it was not parseable according to the protocol."),
+            E::TimeoutError(_) => {
+                f.write_str("request failed due to a timeout, the request MAY have been sent and received.")
+            }
+
+            E::ConstructionFailure(_) => {
+                f.write_str("request failed during construction, it was not dispatched over the network.")
+            }
+
+            E::DispatchFailure(_) => f.write_str(
+                "request failed during dispatch, an HTTP response was not received. the request MAY have been set.",
+            ),
+
+            E::CreateBucket(err) => Display::fmt(err, f),
+            E::DeleteObject(err) => Display::fmt(err, f),
+            E::GetObject(err) => Display::fmt(err, f),
+            E::HeadObject(err) => Display::fmt(err, f),
+            E::ListBuckets(err) => Display::fmt(err, f),
+            E::ListObjectsV2(err) => Display::fmt(err, f),
+            E::PutObject(err) => Display::fmt(err, f),
+            E::Library(msg) => f.write_str(msg),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 impl From<SdkError<ListBucketsError, Response<SdkBody>>> for Error {
     fn from(error: SdkError<ListBucketsError, Response<SdkBody>>) -> Self {
