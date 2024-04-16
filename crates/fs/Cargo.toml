@@ -48,7 +48,7 @@ infer = { version = "0.15.0", default-features = false, optional = true }
 log = { version = "0.4.21", optional = true }
 remi = { path = "../../remi", version = "0.7.0" }
 serde = { version = "1.0.197", features = ["derive"], optional = true }
-serde_json = { version = "1.0.115", optional = true }
+serde_json = { version = "1.0.116", optional = true }
 serde_yaml = { version = "0.9.34", optional = true }
 tokio = { version = "1.37.0", features = ["fs", "io-util"] }
 tracing = { version = "0.1.40", optional = true }
