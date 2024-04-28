@@ -1,7 +1,7 @@
 # 🐻‍❄️🧶 Remi (Rust Edition)
 > *Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers.*
 >
-> <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.7.0">v0.7.0</a></kbd> | [:scroll: **Documentation**](https://docs.rs/remi)
+> <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.7.1">v0.7.1</a></kbd> | [:scroll: **Documentation**](https://docs.rs/remi)
 
 **remi-rs** is a Rust port of Noelware's Java-based [Remi](https://github.com/Noelware/remi) for the Rust programming language. It provides a easy way to implement storage-related communications with different storage providers like Amazon S3, Google Cloud Storage, Azure Blob Storage, and more.
 
