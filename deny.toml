@@ -39,11 +39,6 @@ targets = [
 # See also: https://github.com/EmbarkStudios/cargo-deny/pull/611
 version = 2
 
-ignore = [
-  # TODO(spotlightishere): Make a pull request to upstream
-  { id = "RUSTSEC-2021-0153", reason = "encoding is pulled in from java-properties -> serde-java-properties -> testcontainers" }
-]
-
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
