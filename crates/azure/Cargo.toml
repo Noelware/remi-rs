@@ -47,7 +47,7 @@ serde = { version = "1.0.199", features = ["derive"], optional = true }
 tracing = { version = "0.1.40", optional = true }
 
 [dev-dependencies]
-testcontainers = "0.15.0"
+testcontainers = "0.16.3"
 tokio = { version = "1.37.0", features = ["macros", "rt"] }
 tracing-log = "0.2.0"
 tracing-subscriber = "0.3.18"
