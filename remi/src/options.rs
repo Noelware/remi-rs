@@ -84,7 +84,7 @@ impl ListBlobsRequest {
     /// assert!(req.is_excluded("hello.txt"));
     /// ```
     pub fn is_excluded<I: AsRef<str>>(&self, item: I) -> bool {
-        self.excluded.contains(&item.as_ref().to_string())
+        self.excluded.contains(item.as_ref())
     }
 
     /// Checks if an extension is allowed. If the configured extensions
@@ -109,7 +109,7 @@ impl ListBlobsRequest {
             return true;
         }
 
-        self.extensions.contains(&ext.as_ref().to_string())
+        self.extensions.contains(ext.as_ref())
     }
 }
 
@@ -125,8 +125,8 @@ pub struct UploadRequest {
     /// are queried.
     ///
     /// - Filesystem: This will not do anything.
-    /// - Azure: This will not do anything.
-    /// - GCS: This will not do anything.
+    /// - Gridfs: This will insert into the MongoDB document in the `$metadata` field.
+    /// - Azure: This will insert it into the blob's metadata
     /// - S3: This will insert it into the object's metadata
     pub metadata: HashMap<String, String>,
 

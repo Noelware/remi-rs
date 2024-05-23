@@ -14,7 +14,7 @@ Enables the use of [`tracing::instrument`](https://docs.rs/tracing/*/tracing/att
 ### file-format (enabled)
 Whether or not to include [`infer`](https://docs.rs/infer) and [`file-format`](https://docs.rs/file-format) crates when using the default content type resolver.
 
-### serde_json (disabled)
+### serde_json (enabled)
 Whether or not to detect JSON file formats with `serde_json`.
 
 ### serde_yaml (disabled)

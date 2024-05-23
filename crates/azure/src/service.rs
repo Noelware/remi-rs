@@ -432,6 +432,7 @@ impl remi::StorageService for StorageService {
 }
 
 #[cfg(test)]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod tests {
     use crate::{Credential, StorageConfig};
     use azure_storage::CloudLocation;

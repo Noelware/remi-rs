@@ -44,12 +44,36 @@ where
 pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
     #[cfg(feature = "serde_json")]
     if serde_json::from_slice::<serde_json::Value>(data).is_ok() {
-        return Cow::Borrowed("application/json; charset=utf-8");
+        // representing "true", "false", "null", "{any string}", "{any number}" should be plain text
+        match serde_json::from_slice(data).unwrap() {
+            serde_json::Value::String(_)
+            | serde_json::Value::Bool(_)
+            | serde_json::Value::Number(_)
+            | serde_json::Value::Null => return Cow::Borrowed("text/plain"),
+
+            serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+                return Cow::Borrowed("application/json; charset=utf-8")
+            }
+        }
     }
 
     #[cfg(feature = "serde_yaml")]
     if serde_yaml::from_slice::<serde_yaml::Value>(data).is_ok() {
-        return Cow::Borrowed("text/yaml; charset=utf-8");
+        fn match_value(value: &serde_yaml::Value) -> Cow<'static, str> {
+            match value {
+                serde_yaml::Value::Bool(_)
+                | serde_yaml::Value::Number(_)
+                | serde_yaml::Value::String(_)
+                | serde_yaml::Value::Null => Cow::Borrowed("text/plain"),
+
+                serde_yaml::Value::Tagged(m) => match_value(&m.value),
+                serde_yaml::Value::Mapping(_) | serde_yaml::Value::Sequence(_) => {
+                    Cow::Borrowed("text/yaml; charset=utf-8")
+                }
+            }
+        }
+
+        return match_value(&serde_yaml::from_slice(data).unwrap());
     }
 
     infer::get(data).map(|ty| Cow::Borrowed(ty.mime_type())).unwrap_or({
@@ -63,38 +87,104 @@ pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
 pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
     #[cfg(feature = "serde_json")]
     if serde_json::from_slice::<serde_json::Value>(data).is_ok() {
-        return Cow::Borrowed("application/json; charset=utf-8");
+        // representing "true", "false", "null", "{any string}", "{any number}" should be plain text
+        match serde_json::from_slice(data).unwrap() {
+            serde_json::Value::String(_)
+            | serde_json::Value::Bool(_)
+            | serde_json::Value::Number(_)
+            | serde_json::Value::Null => return Cow::Borrowed("text/plain"),
+
+            serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+                return Cow::Borrowed("application/json; charset=utf-8")
+            }
+        }
     }
 
     #[cfg(feature = "serde_yaml")]
     if serde_yaml::from_slice::<serde_yaml::Value>(data).is_ok() {
-        return Cow::Borrowed("text/yaml; charset=utf-8");
+        fn match_value(value: &serde_yaml::Value) -> Cow<'static, str> {
+            match value {
+                serde_yaml::Value::Bool(_)
+                | serde_yaml::Value::Number(_)
+                | serde_yaml::Value::String(_)
+                | serde_yaml::Value::Null => Cow::Borrowed("text/plain"),
+
+                serde_yaml::Value::Tagged(m) => match_value(&m.value),
+                serde_yaml::Value::Mapping(_) | serde_yaml::Value::Sequence(_) => {
+                    Cow::Borrowed("text/yaml; charset=utf-8")
+                }
+            }
+        }
+
+        return match_value(&serde_yaml::from_slice(data).unwrap());
     }
 
     DEFAULT_CONTENT_TYPE.into()
 }
 
 #[cfg(test)]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod tests {
     use super::default_resolver;
 
-    #[cfg_attr(feature = "file_format", test)]
-    #[cfg_attr(
-        not(feature = "file_format"),
-        ignore = "requires `file_format` feature to actually be correct"
-    )]
-    #[cfg_attr(not(feature = "file_format"), allow(unused))]
+    #[cfg(feature = "file-format")]
+    #[test]
     fn test_other_stuff() {
         assert_eq!("text/plain", default_resolver(b"some plain text"));
+        assert_eq!("image/jpeg", default_resolver(&[0xFF, 0xD8, 0xFF, 0xAA]));
     }
 
-    #[cfg_attr(feature = "serde_json", test)]
-    #[cfg_attr(not(feature = "serde_json"), ignore = "requires `serde_json` feature")]
-    #[cfg_attr(not(feature = "serde_json"), allow(unused))]
-    fn test_json() {}
+    #[cfg(feature = "serde_json")]
+    #[test]
+    fn test_json() {
+        use serde_json::{json, to_vec};
 
-    #[cfg_attr(feature = "serde_yaml", test)]
-    #[cfg_attr(not(feature = "serde_yaml"), ignore = "requires `serde_yaml` feature")]
-    #[cfg_attr(not(feature = "serde_yaml"), allow(unused))]
-    fn test_yaml() {}
+        for (value, assertion) in [
+            (json!(null), "text/plain"),
+            (json!(true), "text/plain"),
+            (json!(false), "text/plain"),
+            (json!("any string"), "text/plain"),
+            (json!(1.2), "text/plain"),
+            (json!({ "hello": "world" }), "application/json; charset=utf-8"),
+            (json!(["hello", "world"]), "application/json; charset=utf-8"),
+        ] {
+            assert_eq!(
+                assertion,
+                default_resolver(&to_vec(&value).expect("failed to convert to JSON"))
+            );
+        }
+    }
+
+    #[cfg(feature = "serde_yaml")]
+    #[test]
+    fn test_yaml() {
+        for (value, assertion) in [
+            (serde_yaml::Value::Null, "text/plain"),
+            (serde_yaml::Value::Bool(true), "text/plain"),
+            (serde_yaml::Value::Bool(false), "text/plain"),
+            (serde_yaml::Value::String("hello world".into()), "text/plain"),
+            (serde_yaml::Value::Number(1.into()), "text/plain"),
+            (
+                serde_yaml::Value::Sequence(vec![serde_yaml::Value::Bool(true)]),
+                "text/yaml; charset=utf-8",
+            ),
+            (
+                serde_yaml::Value::Mapping({
+                    let mut map = serde_yaml::Mapping::new();
+                    map.insert(
+                        serde_yaml::Value::String("hello".into()),
+                        serde_yaml::Value::String("world".into()),
+                    );
+
+                    map
+                }),
+                "text/yaml; charset=utf-8",
+            ),
+        ] {
+            assert_eq!(
+                assertion,
+                default_resolver(serde_yaml::to_string(&value).expect("failed to parse YAML").as_bytes())
+            );
+        }
+    }
 }
