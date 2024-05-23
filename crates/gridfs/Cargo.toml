@@ -40,7 +40,7 @@ bytes = "1.6.0"
 futures-util = "0.3.30"
 log = { version = "0.4.21", optional = true }
 mongodb = "2.8.2"
-remi = { path = "../../remi", version = "0.7.0" }
+remi = { path = "../../remi", version = "0.8.0" }
 serde = { version = "1.0.200", features = ["derive"], optional = true }
 tokio-util = "0.7.11"
 tracing = { version = "0.1.40", optional = true }

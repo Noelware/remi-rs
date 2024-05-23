@@ -27,18 +27,3 @@ pub use config::*;
 
 mod service;
 pub use service::*;
-
-#[cfg(test)]
-/// Checks whenever if the `docker` CLI can be found.
-pub(crate) fn is_docker_enabled() -> bool {
-    which::which("docker").is_ok()
-}
-
-#[cfg(test)]
-pub(crate) fn setup_log_pipeline() {
-    use tracing_subscriber::prelude::*;
-
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-}

@@ -1,7 +1,19 @@
 {
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "automerge": true,
-    "extends": ["config:base", "default:timezone(America/Phoenix)", "docker:disableMajor"],
+    "extends": ["config:base", "default:timezone(America/Los_Angeles)", "docker:disableMajor"],
+    "assignees": ["auguwu", "spotlightishere"],
     "vulnerabilityAlerts": {
         "labels": ["security"]
-    }
+    },
+    "customManagers": [
+        {
+            "customType": "regex",
+            "fileMatch": ["crates/**/src/*.rs"],
+            "datasourceTemplate": "docker",
+            "matchStrings": [
+                "\/\/ renovate: image=(?<depName>.*)\nconst TAG: &str = \"(?<currentValue>.*)\";"
+            ]
+        }
+    ]
 }

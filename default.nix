@@ -19,9 +19,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 let
+  lockfile = builtins.fromJSON (builtins.readFile ./flake.lock);
   compat = builtins.fetchTarball {
-    url = "https://github.com/edolstra/flake-compat/archive/b4a34015c698c7793d592d66adbab377907a2be8.tar.gz";
-    sha256 = "sha256:1qc703yg0babixi6wshn5wm2kgl5y1drcswgszh4xxzbrwkk9sv7";
+    url = "https://github.com/edolstra/flake-compat/archive/${lockfile.nodes.flake-compat.locked.rev}.tar.gz";
+    sha256 = "${lockfile.nodes.flake-compat.locked.narHash}";
   };
 in
   (import compat {src = ./.;}).defaultNix.default

@@ -30,13 +30,18 @@
         flake-utils.follows = "flake-utils";
       };
     };
+
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
   outputs = {
-    self,
     nixpkgs,
     flake-utils,
     rust-overlay,
+    ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
@@ -44,34 +49,33 @@
         overlays = [(import rust-overlay)];
       };
 
-      stdenv =
-        if pkgs.stdenv.isLinux
-        then pkgs.stdenv
-        else pkgs.clangStdenv;
-
       rust = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       rustflags =
-        if stdenv.isLinux
+        if pkgs.stdenv.isLinux
         then ''-C link-arg=-fuse-ld=mold -C target-cpu=native $RUSTFLAGS''
         else "$RUSTFLAGS";
+
+      libraries = with pkgs; [openssl];
     in {
       devShells.default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs;
-          [pkg-config]
-          ++ (lib.optional stdenv.isLinux [mold lldb])
-          ++ (lib.optional stdenv.isDarwin [darwin.apple_sdk.frameworks.CoreFoundation]);
+        nativeBuildInputs =
+          [pkgs.pkg-config]
+          ++ (with pkgs; lib.optional stdenv.isLinux [mold lldb])
+          ++ (with pkgs; lib.optional stdenv.isDarwin [darwin.apple_sdk.frameworks.CoreFoundation]);
 
-        buildInputs = with pkgs; [
-          cargo-machete
-          cargo-expand
-          cargo-deny
+        buildInputs = [
+          pkgs.cargo-nextest
+          pkgs.cargo-machete
+          pkgs.cargo-expand
+          pkgs.cargo-deny
 
-          openssl
+          pkgs.openssl
           rust
         ];
 
         shellHook = ''
           export RUSTFLAGS="${rustflags}"
+          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH"
         '';
       };
     });

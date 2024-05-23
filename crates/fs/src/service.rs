@@ -187,7 +187,7 @@ impl StorageService {
 
         Ok(File {
             last_modified_at,
-            content_type: Some(content_type),
+            content_type: Some(content_type.to_string()),
             metadata: Default::default(),
             created_at,
             is_symlink,
@@ -229,7 +229,7 @@ impl StorageService {
 
         Ok(File {
             last_modified_at,
-            content_type: Some(content_type),
+            content_type: Some(content_type.to_string()),
             metadata: Default::default(),
             created_at,
             is_symlink,
@@ -629,17 +629,93 @@ impl RemiStorageService for StorageService {
             log::trace!("contents in given path [{}] will be overwritten", path.display());
         }
 
+        #[cfg(feature = "tracing")]
+        tracing::warn!(
+            remi.service = "fs",
+            path = %path.display(),
+            "uploading file"
+        );
+
+        #[cfg(feature = "log")]
+        log::trace!("uploading file [{}]", path.display());
+
         // ensure that the parent exists, if not, it'll attempt
         // to create all paths in the given parent
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await?;
         }
 
-        let mut file = fs::OpenOptions::new().write(true).create_new(true).open(&path).await?;
+        let mut file = fs::OpenOptions::new();
+        file.write(true);
 
+        if !path.try_exists()? {
+            // atomically create the file if it doesn't exist
+            file.create_new(true);
+        }
+
+        let mut file = file.open(path).await?;
         file.write_all(options.data.as_ref()).await?;
         file.flush().await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // built to not repeat setup functionality
+    macro_rules! build_testcases {
+        ($(
+            $(#[$meta:meta])*
+            $name:ident($storage:ident) $code:block
+        )*) => {
+            $(
+                $(#[$meta])*
+                #[::tokio::test]
+                async fn $name() -> ::std::io::Result<()> {
+                    let tempdir = ::tempfile::tempdir().expect("failed to create tempdir");
+                    assert!(fs::try_exists(&tempdir).await.expect("tempdir to actually exist"));
+
+                    let $storage = $crate::StorageService::new(&tempdir);
+                    ($storage).init().await.expect("initialization part to be successful");
+
+                    assert!(fs::try_exists(tempdir).await.expect("should actually exist?!"));
+
+                    let __ret: ::std::io::Result<()> = $code;
+                    __ret
+                }
+            )*
+        };
+    }
+
+    build_testcases! {
+        init(_storage) {
+            Ok(())
+        }
+
+        // open(storage) {
+        //     #[cfg(feature = "tracing")]
+        //     use tracing_subscriber::prelude::*;
+
+        //     #[cfg(feature = "tracing")]
+        //     let _guard = tracing_subscriber::registry().with(tracing_subscriber::fmt::layer()).set_default();
+
+        //     // 1. upload the contents and see if we can do so
+        //     let contents: remi::Bytes = "{\"wuff\":true}".into();
+        //     storage.upload("./wuff.json", UploadRequest::default()
+        //         .with_data(contents.clone())
+        //         .with_content_type(Some(default_resolver(contents.as_ref())))
+        //     ).await.expect("unable to upload ./wuff.json");
+
+        //     // 2. assert that it exists
+        //     assert!(storage.exists("./wuff.json").await?);
+
+        //     // 3. open the file and check if it is the same
+        //     assert_eq!(contents, storage.open("./wuff.json").await?.unwrap());
+
+        //     Ok(())
+        // }
     }
 }

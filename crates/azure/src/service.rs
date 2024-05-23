@@ -21,7 +21,8 @@
 
 use crate::StorageConfig;
 use async_trait::async_trait;
-use azure_core::request_options::Prefix;
+use azure_core::request_options::{Metadata, Prefix};
+use azure_storage::{ErrorKind, ResultExt};
 use azure_storage_blobs::prelude::ContainerClient;
 use bytes::Bytes;
 use futures_util::StreamExt;
@@ -43,6 +44,25 @@ impl StorageService {
             container: config.clone().into(),
             config,
         }
+    }
+
+    /// Creates a new [`StorageClient`] with an existing [`ContainerClient`].
+    pub fn with_container_client(container: ContainerClient) -> StorageService {
+        Self {
+            container,
+            config: StorageConfig::dummy(),
+        }
+    }
+
+    fn sanitize_path<P: AsRef<Path> + Send>(&self, path: P) -> azure_core::Result<String> {
+        let path = path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| azure_core::Error::new(ErrorKind::Other, "was not valid utf-8"))
+            .with_context(ErrorKind::Other, || "failed to convert path into a string")?;
+
+        let path = path.trim_start_matches("./").trim_start_matches("~/");
+        Ok(path.into())
     }
 }
 
@@ -119,10 +139,7 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
-            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
-        })?);
-
+        let client = self.container.blob_client(self.sanitize_path(path)?);
         if !client.exists().await? {
             return Ok(None);
         }
@@ -159,10 +176,7 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
-            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
-        })?);
-
+        let client = self.container.blob_client(self.sanitize_path(path)?);
         let props = client.get_properties().await?;
         let data = Bytes::from(client.get_content().await?);
 
@@ -314,11 +328,7 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
-            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
-        })?);
-
-        // file doesn't exist, skip right away
+        let client = self.container.blob_client(self.sanitize_path(path)?);
         if !client.exists().await? {
             return Ok(());
         }
@@ -355,11 +365,7 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
-            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
-        })?);
-
-        client.exists().await
+        self.container.blob_client(self.sanitize_path(path)?).exists().await
     }
 
     #[cfg_attr(
@@ -391,10 +397,7 @@ impl remi::StorageService for StorageService {
             self.config.container
         );
 
-        let client = self.container.blob_client(path.to_str().ok_or_else(|| {
-            azure_core::Error::new(azure_core::error::ErrorKind::Other, "failed to convert path to UTF-8")
-        })?);
-
+        let client = self.container.blob_client(self.sanitize_path(path)?);
         if client.exists().await? {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
@@ -419,117 +422,114 @@ impl remi::StorageService for StorageService {
             blob = blob.content_type(ct);
         }
 
-        blob.await.map(|_| ())
+        let mut metadata = Metadata::new();
+        for (key, value) in options.metadata.clone() {
+            metadata.insert(key.as_str(), remi::Bytes::from(value));
+        }
+
+        blob.metadata(metadata).await.map(|_| ())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{is_docker_enabled, StorageConfig};
+    use crate::{Credential, StorageConfig};
     use azure_storage::CloudLocation;
-    use testcontainers::{clients::Cli, GenericImage};
+    use bollard::Docker;
+    use remi::{StorageService, UploadRequest};
+    use testcontainers::{runners::AsyncRunner, GenericImage};
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    fn get_azurite_container() -> GenericImage {
-        GenericImage::new("mcr.microsoft.com/azure-storage/azurite", "3.29.0").with_exposed_port(10000)
+    const IMAGE: &str = "mcr.microsoft.com/azure-storage/azurite";
+
+    // renovate: image=microsoft-azure-storage-azurite
+    const TAG: &str = "3.29.0";
+
+    fn container() -> GenericImage {
+        GenericImage::new(IMAGE, TAG)
     }
 
     #[test]
-    fn check_if_azurite_container_can_run() {
-        if !is_docker_enabled() {
-            eprintln!("[remi-azure] `docker` is missing, cannot run test");
-            return;
-        }
-
-        // in CI (GitHub Actions), it will pull the `azurite` image as a Windows container and Microsoft
-        // doesn't ship Windows containers of the `azurite` image, so we just ignore the test alltogether
-        //
-        // TODO(@auguwu): how to fix this? :3
-        //
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        // running 2 tests
-        // test service::tests::dbg_config ... ignored
-        // 2024-01-15T01:40:26.004251Z DEBUG testcontainers::clients::cli: Executing command: "docker" "run" "--expose=10000" "-P" "-d" "mcr.microsoft.com/azure-storage/azurite:3.29.0" "azurite-blob" "--blobHost" "0.0.0.0"
-        // 2024-01-15T01:40:33.899191Z ERROR testcontainers::clients::cli: Failed to start container.
-        // Container stdout:
-        // Container stderr: Unable to find image 'mcr.microsoft.com/azure-storage/azurite:3.29.0' locally
-        // 3.29.0: Pulling from azure-storage/azurite
-        // docker: no matching manifest for windows/amd64 10.0.20348 in the manifest list entries.
-        // See 'docker run --help'.
-        //
-        // test service::tests::check_if_azurite_container_can_run ... FAILED
-        //
-        // failures:
-        //
-        // ---- service::tests::check_if_azurite_container_can_run stdout ----
-        // thread 'service::tests::check_if_azurite_container_can_run' panicked at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-6f17d22bba15001f\testcontainers-0.15.0\src\clients\cli.rs:51:13:
-        // Failed to start container, check log for details
-        // note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-        //
-        // failures:
-        //     service::tests::check_if_azurite_container_can_run
-        //
-        // test result: FAILED. 0 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 7.90s
-        //
-        // error: test failed, to rerun pass `-p remi-azure --lib`
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        if is_docker_enabled() && cfg!(windows) {
-            eprintln!("[remi-azure] `docker` is enabled but it might not be configured with using Linux containers, cannot run test");
-            return;
-        }
-
-        // testcontainers uses 'log' to output information, so we use tracing_subscriber
-        // with `tracing_log` to output to stdout (useful for debugging)
-        crate::setup_log_pipeline();
-
-        let cli = Cli::default();
-        let container = cli.run((
-            get_azurite_container(),
-            vec![
-                String::from("azurite-blob"),
-                String::from("--blobHost"),
-                String::from("0.0.0.0"),
-            ],
-        ));
-
-        eprintln!(
-            "[remi-azure] container with id {} is running image {:?}",
-            container.id(),
-            container.image()
+    fn test_sanitize_paths() {
+        let storage = crate::StorageService::new(StorageConfig::dummy());
+        assert_eq!(storage.sanitize_path("./weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(storage.sanitize_path("~/weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(storage.sanitize_path("weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(
+            storage.sanitize_path("~/weow/fluff/mooo.exe").unwrap(),
+            String::from("weow/fluff/mooo.exe")
         );
     }
 
-    #[tokio::test]
-    #[ignore]
-    async fn dbg_config() {
-        if !is_docker_enabled() {
-            eprintln!("[remi-azure] `docker` is missing, cannot run test");
-            return;
+    macro_rules! build_testcases {
+        (
+            $(
+                $(#[$meta:meta])*
+                async fn $name:ident($storage:ident) $code:block
+            )*
+        ) => {
+            $(
+                #[cfg_attr(target_os = "linux", tokio::test)]
+                #[cfg_attr(not(target_os = "linux"), ignore = "azurite image can be only used on Linux")]
+                $(#[$meta])*
+                async fn $name() {
+                    // if any time we can't probe docker, then we cannot continue
+                    if Docker::connect_with_defaults().is_err() {
+                        eprintln!("[remi-azure] `docker` cannot be probed by default settings; skipping test");
+                        return;
+                    }
+
+                    let _guard = tracing_subscriber::registry()
+                        .with(tracing_subscriber::fmt::layer())
+                        .set_default();
+
+                    let container = (
+                        container(),
+                        vec![
+                            From::from("azurite-blob"),
+                            From::from("--blobHost"),
+                            From::from("0.0.0.0"),
+                        ],
+                    )
+                        .start()
+                        .await;
+
+                    let $storage = crate::StorageService::new(StorageConfig {
+                        container: String::from("test-container"),
+                        credentials: Credential::AccessKey {
+                            account: String::from("devstoreaccount1"),
+                            access_key: String::from(
+                                "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",
+                            ),
+                        },
+                        location: CloudLocation::Emulator {
+                            address: container.get_host().await.to_string(),
+                            port: container.get_host_port_ipv4(10000).await,
+                        },
+                    });
+
+                    ($storage).init().await.expect("failed to initialize storage service");
+
+                    let __ret = $code;
+                    __ret
+                }
+            )*
+        };
+    }
+
+    build_testcases! {
+        async fn prepare_azurite_container_usage(storage) {
         }
 
-        let cli = Cli::default();
-        let container = cli.run((
-            get_azurite_container(),
-            vec![
-                String::from("azurite-blob"),
-                String::from("--blobHost"),
-                String::from("0.0.0.0"),
-            ],
-        ));
+        async fn test_uploading_file(storage) {
+            let contents: remi::Bytes = "{\"wuff\":true}".into();
+            storage.upload("./wuff.json", UploadRequest::default()
+                .with_content_type(Some("application/json"))
+                .with_data(contents.clone())
+            ).await.expect("failed to upload");
 
-        let config = StorageConfig {
-            location: CloudLocation::Emulator {
-                address: container.get_bridge_ip_address().to_string(),
-                port: container.get_host_port_ipv4(10000),
-            },
-
-            container: "test-container".into(),
-            credentials: crate::Credential::AccessKey {
-                account: "devstoreaccount1".into(),
-                access_key: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-                    .into(),
-            },
-        };
-
-        dbg!(config);
+            assert!(storage.exists("./wuff.json").await.expect("failed to query ./wuff.json"));
+            assert_eq!(contents, storage.open("./wuff.json").await.expect("failed to open ./wuff.json").expect("it should exist"));
+        }
     }
 }

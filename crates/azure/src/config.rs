@@ -38,6 +38,18 @@ pub struct StorageConfig {
     pub container: String,
 }
 
+impl StorageConfig {
+    pub(crate) fn dummy() -> Self {
+        StorageConfig {
+            credentials: Credential::Anonymous,
+            container: "dummy-test".into(),
+            location: CloudLocation::Public {
+                account: "dummy".into(),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]

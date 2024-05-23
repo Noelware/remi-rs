@@ -22,7 +22,7 @@
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc = include_str!("../README.md")]
 
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 // re-export (just in case!~)
 #[doc(hidden)]
@@ -48,13 +48,31 @@ pub trait StorageService: Send + Sync {
     type Error;
 
     /// The name of the storage service.
+    ///
+    /// * since 0.5.0
+    /// * deprecated (since 0.8.0): will be reverted to [`StorageService::name`], removal in v0.9 release
+    #[deprecated(since = "0.8.0", note = "will be reverted to `StorageService#name`, removal in v0.9")]
     const NAME: &'static str;
+
+    /// Returns the name of the storage service.
+    ///
+    /// * since 0.1.0
+    #[allow(deprecated)]
+    fn name(&self) -> Cow<'static, str>
+    where
+        Self: Sized,
+    {
+        Cow::Borrowed(Self::NAME)
+    }
 
     /// Optionally initialize this [`StorageService`] if it requires initialization,
     /// like creating a directory if it doesn't exist.
     ///
     /// * since 0.1.0
-    async fn init(&self) -> Result<(), Self::Error> {
+    async fn init(&self) -> Result<(), Self::Error>
+    where
+        Self: Sized,
+    {
         Ok(())
     }
 
@@ -62,13 +80,17 @@ pub trait StorageService: Send + Sync {
     /// `None` will be returned to indicate that file doesn't exist.
     ///
     /// * since 0.1.0
-    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>, Self::Error>;
+    async fn open<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Bytes>, Self::Error>
+    where
+        Self: Sized;
 
     /// Open a file in the given `path` and returns a [`Blob`] structure if the path existed, otherwise
     /// `None` will be returned to indiciate that a file doesn't exist.
     ///
     /// * since 0.1.0
-    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>, Self::Error>;
+    async fn blob<P: AsRef<Path> + Send>(&self, path: P) -> Result<Option<Blob>, Self::Error>
+    where
+        Self: Sized;
 
     /// Iterate over a list of files from a storage service and returns a [`Vec`] of [`Blob`]s.
     ///
@@ -77,24 +99,32 @@ pub trait StorageService: Send + Sync {
         &self,
         path: Option<P>,
         options: Option<ListBlobsRequest>,
-    ) -> Result<Vec<Blob>, Self::Error>;
+    ) -> Result<Vec<Blob>, Self::Error>
+    where
+        Self: Sized;
 
     /// Deletes a file in a specified `path`. At the moment, `()` is returned but `bool` might be
     /// returned to indicate if it actually deleted itself or not.
     ///
     /// * since 0.1.0
-    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<(), Self::Error>;
+    async fn delete<P: AsRef<Path> + Send>(&self, path: P) -> Result<(), Self::Error>
+    where
+        Self: Sized;
 
     /// Checks the existence of the file by the specified path.
     ///
     /// * since: 0.1.0
-    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool, Self::Error>;
+    async fn exists<P: AsRef<Path> + Send>(&self, path: P) -> Result<bool, Self::Error>
+    where
+        Self: Sized;
 
     /// Does a file upload where it writes the byte array as one call and does not do chunking. Use the [`StorageService::multipart_upload`]
     /// method to upload chunks by a specific size.
     ///
     /// * since: 0.1.0
-    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error>;
+    async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error>
+    where
+        Self: Sized;
 
     // /// Does a multipart upload, where it uploads chunks of data bit by bit. By default, this will in an
     // /// unimplemented state and some storage services don't support chunk uploading.
@@ -109,12 +139,17 @@ pub trait StorageService: Send + Sync {
     /// [`find`][Iterator::find] method.
     ///
     /// * since: 0.6.0
+    /// * deprecated (since 0.8.0): will no longer exist in the v0.9 release as it's not used
+    #[deprecated(since = "0.8.0", note = "will no longer exist in the v0.9 release as it's not used")]
     async fn find<P: AsRef<Path> + Send, F: FnMut(&Blob) -> bool + Send>(
         &self,
         path: Option<P>,
         options: Option<ListBlobsRequest>,
         finder: F,
-    ) -> Result<Option<Blob>, Self::Error> {
+    ) -> Result<Option<Blob>, Self::Error>
+    where
+        Self: Sized,
+    {
         self.blobs(path, options)
             .await
             .map(|blobs| blobs.into_iter().find(finder))
