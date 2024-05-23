@@ -9,7 +9,7 @@
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": ["crates/**/src/*.rs"],
+            "fileMatch": [".rs$"],
             "datasourceTemplate": "docker",
             "matchStrings": [
                 "\/\/ renovate: image=(?<depName>.*)\nconst TAG: &str = \"(?<currentValue>.*)\";"
