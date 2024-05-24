@@ -9,10 +9,10 @@
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": [".rs$"],
+            "fileMatch": ["**/*.rs"],
             "datasourceTemplate": "docker",
             "matchStrings": [
-                "\/\/ renovate: image=(?<depName>.*)\nconst TAG: &str = \"(?<currentValue>.*)\";"
+                "\/\/\\s?renovate: image=\"(?<depName>.*?)\"\\s?const ([A-Z]*): &str = \"?(?<currentValue>[\\w.-]*)\";"
             ]
         }
     ]

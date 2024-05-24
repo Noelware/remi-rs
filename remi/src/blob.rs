@@ -23,6 +23,7 @@ use bytes::Bytes;
 use std::{collections::HashMap, fmt::Display};
 
 /// Represents a file or directory from any storage service.
+#[derive(Debug, Clone)]
 pub enum Blob {
     /// Represents a directory that was located somewhere.
     Directory(Directory),
@@ -69,16 +70,13 @@ pub struct File {
 
 impl Display for File {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // file "assets/openapi.json" (12345 bytes) | application/json; charset=utf-8
-        f.write_fmt(format_args!(
-            "file [{}] ({} bytes){}",
-            self.path,
-            self.size,
-            match self.content_type {
-                Some(ref ct) => format!(" | {ct}"),
-                None => "".into(),
-            }
-        ))
+        // file "file:///assets/openapi.json" (12345 bytes) | application/json; charset=utf-8
+        write!(f, "file [{}] ({} bytes)", self.path, self.size)?;
+        if let Some(ref ct) = self.content_type {
+            write!(f, " | {ct}")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -98,6 +96,6 @@ pub struct Directory {
 
 impl Display for Directory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("directory {}", self.path))
+        write!(f, "directory {}", self.path)
     }
 }

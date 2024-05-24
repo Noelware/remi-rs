@@ -177,6 +177,10 @@ impl remi::StorageService for StorageService {
         );
 
         let client = self.container.blob_client(self.sanitize_path(path)?);
+        if !client.exists().await? {
+            return Ok(None);
+        }
+
         let props = client.get_properties().await?;
         let data = Bytes::from(client.get_content().await?);
 
@@ -443,7 +447,7 @@ mod tests {
 
     const IMAGE: &str = "mcr.microsoft.com/azure-storage/azurite";
 
-    // renovate: image=microsoft-azure-storage-azurite
+    // renovate: image="microsoft-azure-storage-azurite"
     const TAG: &str = "3.29.0";
 
     fn container() -> GenericImage {
@@ -531,6 +535,42 @@ mod tests {
 
             assert!(storage.exists("./wuff.json").await.expect("failed to query ./wuff.json"));
             assert_eq!(contents, storage.open("./wuff.json").await.expect("failed to open ./wuff.json").expect("it should exist"));
+        }
+
+        async fn list_blobs(storage) {
+            for i in 0..100 {
+                let contents: remi::Bytes = format!("{{\"blob\":{i}}}").into();
+                storage.upload(format!("./wuff.{i}.json"), UploadRequest::default()
+                    .with_content_type(Some("application/json"))
+                    .with_data(contents)
+                ).await.expect("failed to upload blob");
+            }
+
+            let blobs = storage.blobs(None::<&str>, None).await.expect("failed to list all blobs");
+            let iter = blobs.iter().filter_map(|x| match x {
+                remi::Blob::File(file) => Some(file),
+                _ => None
+            });
+
+            assert!(iter.clone().all(|x|
+                x.content_type == Some(String::from("application/json")) &&
+                !x.is_symlink &&
+                x.data.starts_with(&[/* b"{" */ 123])
+            ));
+        }
+
+        async fn query_single_blob(storage) {
+            for i in 0..100 {
+                let contents: remi::Bytes = format!("{{\"blob\":{i}}}").into();
+                storage.upload(format!("./wuff.{i}.json"), UploadRequest::default()
+                    .with_content_type(Some("application/json"))
+                    .with_data(contents)
+                ).await.expect("failed to upload blob");
+            }
+
+            assert!(storage.blob("./wuff.98.json").await.expect("failed to query single blob").is_some());
+            assert!(storage.blob("./wuff.95.json").await.expect("failed to query single blob").is_some());
+            assert!(storage.blob("~/doesnt/exist").await.expect("failed to query single blob").is_none());
         }
     }
 }
