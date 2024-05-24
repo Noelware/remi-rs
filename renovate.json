@@ -9,7 +9,7 @@
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": ["**/*.rs"],
+            "fileMatch": ["\\.rs$"],
             "datasourceTemplate": "docker",
             "matchStrings": [
                 "\/\/\\s?renovate: image=\"(?<depName>.*?)\"\\s?const ([A-Z]*): &str = \"?(?<currentValue>[\\w.-]*)\";"
