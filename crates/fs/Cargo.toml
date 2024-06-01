@@ -44,7 +44,7 @@ async-trait = "0.1.80"
 bytes = "1.6.0"
 dirs = "5.0.1"
 file-format = { version = "0.25.0", features = ["reader-txt"], optional = true }
-infer = { version = "0.15.0", default-features = false, optional = true }
+infer = { version = "0.16.0", default-features = false, optional = true }
 log = { version = "0.4.21", optional = true }
 remi = { path = "../../remi", version = "0.8.0" }
 serde = { version = "1.0.200", features = ["derive"], optional = true }
