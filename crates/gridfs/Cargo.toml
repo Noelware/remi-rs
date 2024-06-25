@@ -39,7 +39,7 @@ async-trait = "0.1.80"
 bytes = "1.6.0"
 futures-util = "0.3.30"
 log = { version = "0.4.21", optional = true }
-mongodb = "2.8.2"
+mongodb = "3.0.0"
 remi = { path = "../../remi", version = "0.8.0" }
 serde = { version = "1.0.200", features = ["derive"], optional = true }
 tokio-util = "0.7.11"
