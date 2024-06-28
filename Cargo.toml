@@ -24,8 +24,12 @@ resolver = "2"
 members = ["crates/*", "remi"]
 
 [workspace.package]
-version = "0.8.0"
+version = "0.9.0"
 repository = "https://github.com/Noelware/remi-rs"
 license = "MIT"
 edition = "2021"
 rust-version = "1.76"
+
+[workspace.dependencies]
+bollard = "0.16.1"
+testcontainers = "0.18.0"

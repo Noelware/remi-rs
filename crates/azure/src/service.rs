@@ -27,7 +27,7 @@ use azure_storage_blobs::prelude::ContainerClient;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
-use std::{ops::Deref, path::Path, time::SystemTime};
+use std::{borrow::Cow, ops::Deref, path::Path, time::SystemTime};
 
 #[derive(Debug, Clone)]
 pub struct StorageService {
@@ -77,7 +77,10 @@ impl Deref for StorageService {
 #[async_trait]
 impl remi::StorageService for StorageService {
     type Error = azure_core::Error;
-    const NAME: &'static str = "remi:azure";
+
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("remi:azure")
+    }
 
     #[cfg_attr(
         feature = "tracing",
@@ -436,19 +439,18 @@ impl remi::StorageService for StorageService {
 }
 
 #[cfg(test)]
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod tests {
     use crate::{Credential, StorageConfig};
     use azure_storage::CloudLocation;
     use bollard::Docker;
     use remi::{StorageService, UploadRequest};
-    use testcontainers::{runners::AsyncRunner, GenericImage};
+    use testcontainers::{runners::AsyncRunner, GenericImage, ImageExt};
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     const IMAGE: &str = "mcr.microsoft.com/azure-storage/azurite";
 
     // renovate: image="microsoft-azure-storage-azurite"
-    const TAG: &str = "3.29.0";
+    const TAG: &str = "3.31.0";
 
     fn container() -> GenericImage {
         GenericImage::new(IMAGE, TAG)
@@ -488,17 +490,11 @@ mod tests {
                         .with(tracing_subscriber::fmt::layer())
                         .set_default();
 
-                    let container = (
-                        container(),
-                        vec![
-                            From::from("azurite-blob"),
-                            From::from("--blobHost"),
-                            From::from("0.0.0.0"),
-                        ],
-                    )
-                        .start()
-                        .await;
+                    let req: ::testcontainers::ContainerRequest<GenericImage> = container()
+                        .with_cmd(["azurite-blob", "--blobHost", "0.0.0.0"])
+                        .into();
 
+                    let container = req.start().await.expect("failed to start container");
                     let $storage = crate::StorageService::new(StorageConfig {
                         container: String::from("test-container"),
                         credentials: Credential::AccessKey {
@@ -508,8 +504,8 @@ mod tests {
                             ),
                         },
                         location: CloudLocation::Emulator {
-                            address: container.get_host().await.to_string(),
-                            port: container.get_host_port_ipv4(10000).await,
+                            address: container.get_host().await.expect("failed to get host ip for container").to_string(),
+                            port: container.get_host_port_ipv4(10000).await.expect("failed to get mapped port `10000`"),
                         },
                     });
 

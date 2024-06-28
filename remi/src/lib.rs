@@ -47,23 +47,13 @@ pub trait StorageService: Send + Sync {
     /// when calling any function.
     type Error;
 
-    /// The name of the storage service.
-    ///
-    /// * since 0.5.0
-    /// * deprecated (since 0.8.0): will be reverted to [`StorageService::name`], removal in v0.9 release
-    #[deprecated(since = "0.8.0", note = "will be reverted to `StorageService#name`, removal in v0.9")]
-    const NAME: &'static str;
-
     /// Returns the name of the storage service.
     ///
     /// * since 0.1.0
     #[allow(deprecated)]
     fn name(&self) -> Cow<'static, str>
     where
-        Self: Sized,
-    {
-        Cow::Borrowed(Self::NAME)
-    }
+        Self: Sized;
 
     /// Optionally initialize this [`StorageService`] if it requires initialization,
     /// like creating a directory if it doesn't exist.
@@ -125,33 +115,11 @@ pub trait StorageService: Send + Sync {
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error>
     where
         Self: Sized;
+}
 
-    // /// Does a multipart upload, where it uploads chunks of data bit by bit. By default, this will in an
-    // /// unimplemented state and some storage services don't support chunk uploading.
-    // ///
-    // /// * since
-    // async fn multipart_upload<P: AsRef<Path> + Send>(&self, _path: P) -> Result<(), Self::Error> {
-    //     unimplemented!()
-    // }
+#[cfg(test)]
+mod tests {
+    use crate::StorageService;
 
-    /// Attempt to find a blob from a [`Blob`] where it returns the first blob that was found. A default
-    /// implementation is given which just queries all blobs via [`StorageService::blobs`] and uses the
-    /// [`find`][Iterator::find] method.
-    ///
-    /// * since: 0.6.0
-    /// * deprecated (since 0.8.0): will no longer exist in the v0.9 release as it's not used
-    #[deprecated(since = "0.8.0", note = "will no longer exist in the v0.9 release as it's not used")]
-    async fn find<P: AsRef<Path> + Send, F: FnMut(&Blob) -> bool + Send>(
-        &self,
-        path: Option<P>,
-        options: Option<ListBlobsRequest>,
-        finder: F,
-    ) -> Result<Option<Blob>, Self::Error>
-    where
-        Self: Sized,
-    {
-        self.blobs(path, options)
-            .await
-            .map(|blobs| blobs.into_iter().find(finder))
-    }
+    const _DYN_STORAGE_SERVICE: Option<&dyn StorageService<Error = ()>> = None;
 }

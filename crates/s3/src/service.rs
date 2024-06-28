@@ -27,8 +27,8 @@ use aws_sdk_s3::{
     Client, Config,
 };
 use bytes::Bytes;
-use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
-use std::path::Path;
+use remi::{Blob, Directory, File, ListBlobsRequest, UploadRequest};
+use std::{borrow::Cow, path::Path};
 
 const DEFAULT_CONTENT_TYPE: &str = "application/octet; charset=utf-8";
 
@@ -82,6 +82,8 @@ impl StorageService {
     }
 
     async fn s3_obj_to_blob(&self, entry: &Object) -> crate::Result<Option<Blob>> {
+        use remi::StorageService;
+
         match entry.key() {
             Some(key) if key.ends_with('/') => Ok(Some(Blob::Directory(Directory {
                 created_at: None,
@@ -96,13 +98,16 @@ impl StorageService {
 }
 
 #[async_trait]
-impl RemiStorageService for StorageService {
+impl remi::StorageService for StorageService {
     // this has to stay `io::Error` since `SdkError` requires too much information
     // and this can narrow down.
     //
     // TODO(@auguwu): this can be a flat error if we could do?
     type Error = crate::Error;
-    const NAME: &'static str = "remi:s3";
+
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("remi:s3")
+    }
 
     #[cfg_attr(
         feature = "tracing",

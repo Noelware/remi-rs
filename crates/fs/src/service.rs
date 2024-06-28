@@ -22,7 +22,7 @@
 use crate::{default_resolver, Config, ContentTypeResolver};
 use async_trait::async_trait;
 use bytes::Bytes;
-use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as RemiStorageService, UploadRequest};
+use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as _, UploadRequest};
 use std::{
     borrow::Cow,
     io,
@@ -242,9 +242,12 @@ impl StorageService {
 }
 
 #[async_trait]
-impl RemiStorageService for StorageService {
+impl remi::StorageService for StorageService {
     type Error = io::Error;
-    const NAME: &'static str = "remi:fs";
+
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("remi:gridfs")
+    }
 
     #[cfg_attr(
         feature = "tracing",
