@@ -30,7 +30,7 @@ use bytes::Bytes;
 use remi::{Blob, Directory, File, ListBlobsRequest, UploadRequest};
 use std::{borrow::Cow, path::Path};
 
-const DEFAULT_CONTENT_TYPE: &str = "application/octet; charset=utf-8";
+const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
 
 /// Represents an implementation of [`StorageService`] for Amazon Simple Storage Service.
 #[derive(Debug, Clone)]
@@ -99,10 +99,6 @@ impl StorageService {
 
 #[async_trait]
 impl remi::StorageService for StorageService {
-    // this has to stay `io::Error` since `SdkError` requires too much information
-    // and this can narrow down.
-    //
-    // TODO(@auguwu): this can be a flat error if we could do?
     type Error = crate::Error;
 
     fn name(&self) -> Cow<'static, str> {
@@ -483,6 +479,7 @@ impl remi::StorageService for StorageService {
 
                 Ok(true)
             }
+
             Err(e) => {
                 let inner = e.into_service_error();
                 if inner.is_not_found() {
@@ -525,7 +522,7 @@ impl remi::StorageService for StorageService {
 
         self.client
             .put_object()
-            .bucket(self.config.bucket.clone())
+            .bucket(&self.config.bucket)
             .key(normalized)
             .acl(
                 self.config
@@ -540,6 +537,23 @@ impl remi::StorageService for StorageService {
                 true => None,
                 false => Some(options.metadata.clone()),
             })
+            .send()
+            .await
+            .map(|_| ())
+            .map_err(From::from)
+    }
+
+    #[cfg_attr(feature = "tracing", tracing::instrument(name = "remi.s3.healthcheck", skip_all))]
+    async fn healthcheck(&self) -> Result<(), Self::Error> {
+        #[cfg(feature = "log")]
+        log::trace!("performing healthcheck...");
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!("performing healthcheck...");
+
+        self.client
+            .head_bucket()
+            .bucket(&self.config.bucket)
             .send()
             .await
             .map(|_| ())

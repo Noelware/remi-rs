@@ -24,8 +24,8 @@
 use aws_sdk_s3::{
     operation::{
         create_bucket::CreateBucketError, delete_object::DeleteObjectError, get_object::GetObjectError,
-        head_object::HeadObjectError, list_buckets::ListBucketsError, list_objects_v2::ListObjectsV2Error,
-        put_object::PutObjectError,
+        head_bucket::HeadBucketError, head_object::HeadObjectError, list_buckets::ListBucketsError,
+        list_objects_v2::ListObjectsV2Error, put_object::PutObjectError,
     },
     primitives::SdkBody,
 };
@@ -120,6 +120,10 @@ pub enum Error {
     /// Occurs when an error occurred when transforming AWS S3's responses.
     ByteStream(aws_sdk_s3::primitives::ByteStreamError),
 
+    /// Occurs when `remi-s3` cannot perform a HEAD request to the current bucket. This is mainly
+    /// used in healthchecks to determine if the storage service is ok.
+    HeadBucket(HeadBucketError),
+
     /// Something that `remi-s3` has emitted on its own.
     Library(Cow<'static, str>),
 }
@@ -150,6 +154,7 @@ impl Display for Error {
             E::ListBuckets(err) => Display::fmt(err, f),
             E::ListObjectsV2(err) => Display::fmt(err, f),
             E::PutObject(err) => Display::fmt(err, f),
+            E::HeadBucket(err) => Display::fmt(err, f),
             E::Library(msg) => f.write_str(msg),
         }
     }
@@ -249,6 +254,18 @@ impl From<SdkError<PutObjectError, Response<SdkBody>>> for Error {
             SdkError::TimeoutError(err) => Self::TimeoutError(err),
             SdkError::ResponseError(err) => Self::Response(err),
             err => Error::PutObject(err.into_service_error()),
+        }
+    }
+}
+
+impl From<SdkError<HeadBucketError, Response<SdkBody>>> for Error {
+    fn from(value: SdkError<HeadBucketError, Response<SdkBody>>) -> Self {
+        match value {
+            SdkError::ConstructionFailure(err) => Self::ConstructionFailure(err),
+            SdkError::DispatchFailure(err) => Self::DispatchFailure(err),
+            SdkError::TimeoutError(err) => Self::TimeoutError(err),
+            SdkError::ResponseError(err) => Self::Response(err),
+            err => Error::HeadBucket(err.into_service_error()),
         }
     }
 }

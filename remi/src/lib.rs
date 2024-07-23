@@ -50,7 +50,6 @@ pub trait StorageService: Send + Sync {
     /// Returns the name of the storage service.
     ///
     /// * since 0.1.0
-    #[allow(deprecated)]
     fn name(&self) -> Cow<'static, str>
     where
         Self: Sized;
@@ -115,6 +114,11 @@ pub trait StorageService: Send + Sync {
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error>
     where
         Self: Sized;
+
+    /// Performs any healthchecks to determine the storage service's health.
+    async fn healthcheck(&self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
