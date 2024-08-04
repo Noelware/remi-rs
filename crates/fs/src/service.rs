@@ -30,12 +30,7 @@ use std::{
     sync::Arc,
     time::SystemTime,
 };
-
-#[cfg(not(feature = "async_std"))]
 use tokio::{fs, io::*};
-
-#[cfg(feature = "async_std")]
-use async_std::{fs, io::*};
 
 #[cfg(feature = "tracing")]
 use tracing::instrument;
@@ -44,7 +39,7 @@ use tracing::instrument;
 /// local filesystem.
 #[derive(Clone)]
 pub struct StorageService {
-    resolver: Arc<Box<dyn ContentTypeResolver>>,
+    resolver: Arc<dyn ContentTypeResolver>,
     config: Config,
 }
 
@@ -57,14 +52,14 @@ impl StorageService {
     /// Creates a new [`StorageService`] instance with a provided configuration object.
     pub fn with_config(config: Config) -> StorageService {
         StorageService {
-            resolver: Arc::new(Box::new(default_resolver)),
+            resolver: Arc::new(default_resolver),
             config,
         }
     }
 
     /// Updates the given [`ContentTypeResolver`] to something else.
     pub fn with_resolver<R: ContentTypeResolver + 'static>(mut self, resolver: R) -> StorageService {
-        self.resolver = Arc::new(Box::new(resolver));
+        self.resolver = Arc::new(resolver);
         self
     }
 
