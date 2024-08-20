@@ -75,6 +75,11 @@ jobs:
               with:
                 tool: cargo-nextest
 
+            # On Windows, we'll also need nasm for use with BoringSSL via aws-lc-sys.
+            - name: Install NASM
+              uses: ilammy/setup-nasm@v1
+              if: matrix.runner == 'windows-latest'
+
             - name: Pull dependencies
               run: cargo build --workspace --all-features
 
