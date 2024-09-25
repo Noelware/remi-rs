@@ -32,4 +32,4 @@ rust-version = "1.76"
 
 [workspace.dependencies]
 bollard = "0.17.0"
-testcontainers = "0.22.0"
+testcontainers = "0.23.0"
