@@ -35,20 +35,20 @@ serde = ["dep:serde"]
 log = ["dep:log"]
 
 [dependencies]
-async-trait = "0.1.80"
-bytes = "1.6.0"
-futures-util = "0.3.30"
-log = { version = "0.4.21", optional = true }
-mongodb = "3.0.0"
+async-trait = "0.1.83"
+bytes = "1.7.2"
+futures-util = "0.3.31"
+log = { version = "0.4.22", optional = true }
+mongodb = "3.1.0"
 remi = { path = "../../remi", version = "0.9.0" }
-serde = { version = "1.0.200", features = ["derive"], optional = true }
-tokio-util = "0.7.11"
+serde = { version = "1.0.210", features = ["derive"], optional = true }
+tokio-util = "0.7.12"
 tracing = { version = "0.1.40", optional = true }
 
 [dev-dependencies]
 bollard.workspace = true
 testcontainers.workspace = true
-tokio = { version = "1.37.0", features = ["rt", "macros"] }
+tokio = { version = "1.40.0", features = ["rt", "macros"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 
