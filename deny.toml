@@ -59,6 +59,7 @@ allow = [
     "MPL-2.0",
     "BSD-3-Clause",
     "ISC",
+    "Zlib"
 ]
 exceptions = [
     # unicode-ident includes data generated from Unicode Character Database
