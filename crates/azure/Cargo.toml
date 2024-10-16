@@ -36,7 +36,7 @@ log = ["dep:log"]
 
 [dependencies]
 async-trait = "0.1.83"
-azure_core = "0.20.0"
+azure_core = "0.21.0"
 azure_storage = "0.20.0"
 azure_storage_blobs = "0.20.0"
 bytes = "1.7.2"
