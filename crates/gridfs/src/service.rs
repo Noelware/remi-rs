@@ -25,8 +25,9 @@ use bytes::{Bytes, BytesMut};
 use futures_util::{AsyncWriteExt, StreamExt};
 use mongodb::{
     bson::{doc, raw::ValueAccessErrorKind, Bson, Document, RawDocument},
-    options::{GridFsFindOptions, GridFsUploadOptions},
-    Client, Database, GridFsBucket,
+    gridfs::GridFsBucket,
+    options::GridFsUploadOptions,
+    Client, Database,
 };
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
 use std::{collections::HashMap, io, path::Path};
@@ -198,10 +199,7 @@ impl remi::StorageService for StorageService {
         #[cfg(feature = "log")]
         ::log::info!("opening file [{}]", path);
 
-        let mut cursor = self
-            .bucket
-            .find(doc! { "filename": &path }, GridFsFindOptions::default())
-            .await?;
+        let mut cursor = self.bucket.find(doc! { "filename": &path }).await?;
 
         let advanced = cursor.advance().await?;
         if !advanced {
@@ -267,12 +265,9 @@ impl remi::StorageService for StorageService {
 
         let mut cursor = self
             .bucket
-            .find(
-                doc! {
-                    "filename": &path,
-                },
-                GridFsFindOptions::default(),
-            )
+            .find(doc! {
+                "filename": &path,
+            })
             .await?;
 
         // has_advanced returns false if there is no entries that have that filename
@@ -326,7 +321,7 @@ impl remi::StorageService for StorageService {
             return Ok(vec![]);
         }
 
-        let mut cursor = self.bucket.find(doc!(), GridFsFindOptions::default()).await?;
+        let mut cursor = self.bucket.find(doc!()).await?;
         let mut blobs = vec![];
         while cursor.advance().await? {
             let doc = cursor.current();
@@ -388,12 +383,9 @@ impl remi::StorageService for StorageService {
 
         let mut cursor = self
             .bucket
-            .find(
-                doc! {
-                    "filename": &path,
-                },
-                GridFsFindOptions::default(),
-            )
+            .find(doc! {
+                "filename": &path,
+            })
             .await?;
 
         // has_advanced returns false if there is no entries that have that filename
@@ -474,7 +466,7 @@ impl remi::StorageService for StorageService {
             .metadata(metadata)
             .build();
 
-        let mut stream = self.bucket.open_upload_stream(path, Some(opts));
+        let mut stream = self.bucket.open_upload_stream(path).with_options(opts).await?;
         stream.write_all(&options.data[..]).await?;
         stream.close().await.map_err(From::from)
     }
