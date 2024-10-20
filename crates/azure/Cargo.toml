@@ -21,15 +21,20 @@
 
 [package]
 name = "remi-azure"
-description = "🐻‍❄️🧶 Azure Blob Storage implementation of `remi-rs`"
+description = "🐻‍❄️🧶 Support of Microsoft's Azure Blob Storage with remi-rs primitives"
 version.workspace = true
 repository.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(noeldoc)'] }
+
 [features]
-default = ["serde"]
+default = ["export-azure"]
+
+export-azure = []
 tracing = ["dep:tracing"]
 serde = ["dep:serde"]
 log = ["dep:log"]
