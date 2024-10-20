@@ -58,55 +58,35 @@ jobs:
                 rust-version: [stable, nightly]
                 runner: [ubuntu-latest, windows-latest, macos-latest]
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Setup Rust toolchain
-              uses: dtolnay/rust-toolchain@master
+            - uses: actions/checkout@v4
+            - run: rm rust-toolchain.toml
+            - uses: dtolnay/rust-toolchain@master
               with:
                 toolchain: ${{matrix.rust-version}}
                 components: clippy, rustfmt
-
-            - name: Setup Rust cache
-              uses: Swatinem/rust-cache@v2
-
-            - name: Install `cargo-nextest`
-              uses: taiki-e/install-action@cargo-nextest
+            - uses: Swatinem/rust-cache@v2
+            - uses: taiki-e/install-action@cargo-nextest
               with:
                 tool: cargo-nextest
 
             # On Windows, we'll also need nasm for use with BoringSSL via aws-lc-sys.
-            - name: Install NASM
-              uses: ilammy/setup-nasm@v1
+            - uses: ilammy/setup-nasm@v1
               if: matrix.runner == 'windows-latest'
 
-            - name: Pull dependencies
-              run: cargo build --workspace --all-features
-
-            - name: Run tests
-              run: cargo nextest run --workspace --all-features
-
-            # nextest doesn't run doctests, so we have to use libtest instead
-            - name: Run doctests
-              run: cargo test --doc --workspace --all-features
+            - run: cargo build --workspace --all-features
+            - run: cargo nextest run --workspace --all-features
+            - run: cargo test --doc --workspace --all-features
     clippy:
         name: Clippy
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Setup Rust toolchain
-              uses: dtolnay/rust-toolchain@master
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
               with:
-                toolchain: stable
                 components: clippy, rustfmt
 
-            - name: Setup Rust cache
-              uses: Swatinem/rust-cache@v2
-
-            - name: Clippy!
-              uses: auguwu/clippy-action@1.4.0
+            - uses: Swatinem/rust-cache@v2
+            - uses: auguwu/clippy-action@1.4.0
               with:
                 all-features: true
                 token: ${{secrets.GITHUB_TOKEN}}
@@ -114,27 +94,19 @@ jobs:
         name: '`cargo deny`'
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Install `cargo-deny`
-              uses: taiki-e/install-action@cargo-deny
+            - uses: actions/checkout@v4
+            - uses: taiki-e/install-action@cargo-deny
               with:
                   tool: cargo-deny
 
-            - name: Run "cargo deny"
-              run: cargo deny check all
+            - run: cargo deny check all
     report-missing-deps:
         name: Report Missing Dependencies
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Install `cargo-machete`
-              uses: taiki-e/install-action@cargo-machete
+            - uses: actions/checkout@v4
+            - uses: taiki-e/install-action@cargo-machete
               with:
                   tool: cargo-machete
 
-            - name: Run!
-              run: cargo machete
+            - run: cargo machete

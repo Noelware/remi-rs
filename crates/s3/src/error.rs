@@ -19,8 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// this is not available due to issues (so far), might resolve in the future
-
 use aws_sdk_s3::{
     operation::{
         create_bucket::CreateBucketError, delete_object::DeleteObjectError, get_object::GetObjectError,
@@ -74,7 +72,7 @@ pub enum Error {
     /// variants, something might've been unhandled and is probably isn't your fault.
     ///
     /// * this would be thrown from the [`StorageService::init`][remi::StorageService::init]
-    /// trait method
+    ///   trait method
     CreateBucket(CreateBucketError),
 
     /// Amazon S3 was unable to get the object that you were looking for either
@@ -87,7 +85,7 @@ pub enum Error {
     /// or an unhandled variant that the Rust SDK doesn't support *yet*.
     ///
     /// * this would be thrown from the [`StorageService::open`][remi::StorageService::open]
-    /// or the [`StorageService::blob`][remi::StorageService::blob] trait methods.
+    ///   or the [`StorageService::blob`][remi::StorageService::blob] trait methods.
     GetObject(GetObjectError),
 
     /// Amazon S3 was unable to list objects from the specific requirements that
@@ -98,7 +96,7 @@ pub enum Error {
     /// [`StorageService::init`][remi::StorageService::int] is called.
     ///
     /// * this would be thrown from the [`StorageService::open`][remi::StorageService::open]
-    /// or the [`StorageService::blob`][remi::StorageService::blob] trait methods.
+    ///   or the [`StorageService::blob`][remi::StorageService::blob] trait methods.
     ListObjectsV2(ListObjectsV2Error),
 
     /// Amazon S3 was unable to delete an object from the service.

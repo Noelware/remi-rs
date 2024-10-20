@@ -22,12 +22,11 @@
   description = "🐻‍❄️🧶 Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    systems.url = "github:nix-systems/default";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
 
@@ -39,44 +38,23 @@
 
   outputs = {
     nixpkgs,
-    flake-utils,
     rust-overlay,
+    systems,
     ...
-  }:
-    flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [(import rust-overlay)];
+  }: let
+    eachSystem = nixpkgs.lib.genAttrs (import systems);
+    overlays = [(import rust-overlay)];
+
+    nixpkgsFor = system:
+      import nixpkgs {
+        inherit system overlays;
       };
-
-      rust = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-      rustflags =
-        if pkgs.stdenv.isLinux
-        then ''-C link-arg=-fuse-ld=mold -C target-cpu=native $RUSTFLAGS''
-        else "$RUSTFLAGS";
-
-      libraries = with pkgs; [openssl];
+  in {
+    formatter = eachSystem (system: (nixpkgsFor system).alejandra);
+    devShells = eachSystem (system: let
+      pkgs = nixpkgsFor system;
     in {
-      devShells.default = pkgs.mkShell {
-        nativeBuildInputs =
-          [pkgs.pkg-config]
-          ++ (with pkgs; lib.optional stdenv.isLinux [mold lldb])
-          ++ (with pkgs; lib.optional stdenv.isDarwin [darwin.apple_sdk.frameworks.CoreFoundation]);
-
-        buildInputs = [
-          pkgs.cargo-nextest
-          pkgs.cargo-machete
-          pkgs.cargo-expand
-          pkgs.cargo-deny
-
-          pkgs.openssl
-          rust
-        ];
-
-        shellHook = ''
-          export RUSTFLAGS="${rustflags}"
-          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH"
-        '';
-      };
+      default = import ./nix/devshell.nix {inherit pkgs;};
     });
+  };
 }

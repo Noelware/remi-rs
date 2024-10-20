@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
 # Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
@@ -20,8 +18,36 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+{pkgs}:
+with pkgs; let
+  toolchain = pkgs.rust-bin.fromRustupToolchainFile ../rust-toolchain.toml;
+  flags =
+    if stdenv.isLinux
+    then ''-C link-arg=-fuse-ld=mold -C target-cpu=native''
+    else "";
+in
+  mkShell {
+    LD_LIBRARY_PATH = lib.makeLibraryPath [openssl];
+    nativeBuildInputs =
+      [pkg-config]
+      ++ (lib.optional stdenv.isLinux [mold lldb])
+      ++ (lib.optional stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
+        CoreFoundation
+        Security
+      ]));
 
-if ! command -v cargo >/dev/null; then
-    /tmp/rustup-init -y --profile minimal --default-toolchain "${RUST_VERSION}"
-    rustup component add clippy rustfmt
-fi
+    buildInputs = [
+      cargo-nextest
+      cargo-machete
+      cargo-expand
+      cargo-deny
+
+      toolchain
+      openssl
+      git
+    ];
+
+    shellHook = ''
+      export RUSTFLAGS="${flags} $RUSTFLAGS"
+    '';
+  }
