@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::{default_resolver, Config, ContentTypeResolver};
+use crate::{default_resolver, ContentTypeResolver, StorageConfig};
 use remi::{async_trait, Blob, Bytes, Directory, File, ListBlobsRequest, StorageService as _, UploadRequest};
 use std::{
     borrow::Cow,
@@ -38,17 +38,17 @@ use tracing::instrument;
 #[derive(Clone)]
 pub struct StorageService {
     resolver: Arc<dyn ContentTypeResolver>,
-    config: Config,
+    config: StorageConfig,
 }
 
 impl StorageService {
     /// Creates a new [`StorageService`] instance.
     pub fn new<P: AsRef<Path>>(path: P) -> StorageService {
-        Self::with_config(Config::new(path))
+        Self::with_config(StorageConfig::new(path))
     }
 
     /// Creates a new [`StorageService`] instance with a provided configuration object.
-    pub fn with_config(config: Config) -> StorageService {
+    pub fn with_config(config: StorageConfig) -> StorageService {
         StorageService {
             resolver: Arc::new(default_resolver),
             config,

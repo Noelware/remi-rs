@@ -26,13 +26,11 @@ use remi::{StorageService as _, UploadRequest};
 
 #[tokio::main]
 async fn main() {
-    let storage = StorageService::new(StorageConfig {
-        // You can customise the MongoDB client here
-        client_options: mongodb::ClientOptions::builder().servers(vec!["mongodb://localhost:27017"]).build();
+    let storage = StorageService::from_conn_string("mongodb://localhost:27017", StorageConfig {
         bucket: "my-bucket".into(),
 
         ..Default::default()
-    });
+    }).await.unwrap();
 
     // Initialize the container. This will:
     //

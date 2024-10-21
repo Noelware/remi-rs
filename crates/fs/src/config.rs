@@ -21,18 +21,22 @@
 
 use std::path::{Path, PathBuf};
 
+/// Type alias for [`StorageConfig`].
+#[deprecated(since = "0.9.0", note = "Use the `StorageConfig` struct instead")]
+pub type Config = StorageConfig;
+
 /// Represents the main configuration of using the `StorageService` implementation of remi-fs.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Config {
+pub struct StorageConfig {
     /// [`PathBuf`] to the directory where `remi-fs` can locate files from with the `./` prefix.
     pub directory: PathBuf,
 }
 
-impl Config {
+impl StorageConfig {
     /// Creates a new [`Config`] instance.
-    pub fn new<P: AsRef<Path>>(path: P) -> Config {
-        Config {
+    pub fn new<P: AsRef<Path>>(path: P) -> StorageConfig {
+        StorageConfig {
             directory: path.as_ref().into(),
         }
     }
