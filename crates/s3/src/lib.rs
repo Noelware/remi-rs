@@ -21,6 +21,7 @@
 
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc = include_str!("../README.md")]
+#![cfg_attr(any(noeldoc, docsrs), feature(doc_cfg))]
 #![allow(
     // We are aware that the `Err` variant for crate::Error is very large
     // and we can't really do anything about it.
