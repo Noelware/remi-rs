@@ -40,6 +40,11 @@ where
     }
 }
 
+/// Default implementation of a [`ContentTypeResolver`]. It can detect any format
+/// that the [`file-format`] and [`infer`] crates can plus:
+///
+/// * [`serde_json`] for JSON documents
+/// * [`serde_yaml_ng`] for YAML documents
 #[cfg(feature = "file-format")]
 pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
     #[cfg(feature = "serde_json")]
@@ -57,23 +62,23 @@ pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
         }
     }
 
-    #[cfg(feature = "serde_yaml")]
-    if serde_yaml::from_slice::<serde_yaml::Value>(data).is_ok() {
-        fn match_value(value: &serde_yaml::Value) -> Cow<'static, str> {
+    #[cfg(feature = "serde_yaml_ng")]
+    if serde_yaml_ng::from_slice::<serde_yaml_ng::Value>(data).is_ok() {
+        fn match_value(value: &serde_yaml_ng::Value) -> Cow<'static, str> {
             match value {
-                serde_yaml::Value::Bool(_)
-                | serde_yaml::Value::Number(_)
-                | serde_yaml::Value::String(_)
-                | serde_yaml::Value::Null => Cow::Borrowed("text/plain"),
+                serde_yaml_ng::Value::Bool(_)
+                | serde_yaml_ng::Value::Number(_)
+                | serde_yaml_ng::Value::String(_)
+                | serde_yaml_ng::Value::Null => Cow::Borrowed("text/plain"),
 
-                serde_yaml::Value::Tagged(m) => match_value(&m.value),
-                serde_yaml::Value::Mapping(_) | serde_yaml::Value::Sequence(_) => {
+                serde_yaml_ng::Value::Tagged(m) => match_value(&m.value),
+                serde_yaml_ng::Value::Mapping(_) | serde_yaml_ng::Value::Sequence(_) => {
                     Cow::Borrowed("text/yaml; charset=utf-8")
                 }
             }
         }
 
-        return match_value(&serde_yaml::from_slice(data).unwrap());
+        return match_value(&serde_yaml_ng::from_slice(data).unwrap());
     }
 
     infer::get(data).map(|ty| Cow::Borrowed(ty.mime_type())).unwrap_or({
@@ -82,7 +87,8 @@ pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
     })
 }
 
-/// A default implementation of a [`ContentTypeResolver`].
+/// A default implementation of a [`ContentTypeResolver`]. It is a loose resolver
+/// that can also detect JSON and YAML documents from their respected `serde` crate.
 #[cfg(not(feature = "file-format"))]
 pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
     #[cfg(feature = "serde_json")]
@@ -100,23 +106,23 @@ pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
         }
     }
 
-    #[cfg(feature = "serde_yaml")]
-    if serde_yaml::from_slice::<serde_yaml::Value>(data).is_ok() {
-        fn match_value(value: &serde_yaml::Value) -> Cow<'static, str> {
+    #[cfg(feature = "serde_yaml_ng")]
+    if serde_yaml_ng::from_slice::<serde_yaml_ng::Value>(data).is_ok() {
+        fn match_value(value: &serde_yaml_ng::Value) -> Cow<'static, str> {
             match value {
-                serde_yaml::Value::Bool(_)
-                | serde_yaml::Value::Number(_)
-                | serde_yaml::Value::String(_)
-                | serde_yaml::Value::Null => Cow::Borrowed("text/plain"),
+                serde_yaml_ng::Value::Bool(_)
+                | serde_yaml_ng::Value::Number(_)
+                | serde_yaml_ng::Value::String(_)
+                | serde_yaml_ng::Value::Null => Cow::Borrowed("text/plain"),
 
-                serde_yaml::Value::Tagged(m) => match_value(&m.value),
-                serde_yaml::Value::Mapping(_) | serde_yaml::Value::Sequence(_) => {
+                serde_yaml_ng::Value::Tagged(m) => match_value(&m.value),
+                serde_yaml_ng::Value::Mapping(_) | serde_yaml_ng::Value::Sequence(_) => {
                     Cow::Borrowed("text/yaml; charset=utf-8")
                 }
             }
         }
 
-        return match_value(&serde_yaml::from_slice(data).unwrap());
+        return match_value(&serde_yaml_ng::from_slice(data).unwrap());
     }
 
     DEFAULT_CONTENT_TYPE.into()
@@ -155,25 +161,25 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde_yaml")]
+    #[cfg(feature = "serde_yaml_ng")]
     #[test]
     fn test_yaml() {
         for (value, assertion) in [
-            (serde_yaml::Value::Null, "text/plain"),
-            (serde_yaml::Value::Bool(true), "text/plain"),
-            (serde_yaml::Value::Bool(false), "text/plain"),
-            (serde_yaml::Value::String("hello world".into()), "text/plain"),
-            (serde_yaml::Value::Number(1.into()), "text/plain"),
+            (serde_yaml_ng::Value::Null, "text/plain"),
+            (serde_yaml_ng::Value::Bool(true), "text/plain"),
+            (serde_yaml_ng::Value::Bool(false), "text/plain"),
+            (serde_yaml_ng::Value::String("hello world".into()), "text/plain"),
+            (serde_yaml_ng::Value::Number(1.into()), "text/plain"),
             (
-                serde_yaml::Value::Sequence(vec![serde_yaml::Value::Bool(true)]),
+                serde_yaml_ng::Value::Sequence(vec![serde_yaml_ng::Value::Bool(true)]),
                 "text/yaml; charset=utf-8",
             ),
             (
-                serde_yaml::Value::Mapping({
-                    let mut map = serde_yaml::Mapping::new();
+                serde_yaml_ng::Value::Mapping({
+                    let mut map = serde_yaml_ng::Mapping::new();
                     map.insert(
-                        serde_yaml::Value::String("hello".into()),
-                        serde_yaml::Value::String("world".into()),
+                        serde_yaml_ng::Value::String("hello".into()),
+                        serde_yaml_ng::Value::String("world".into()),
                     );
 
                     map
@@ -183,7 +189,11 @@ mod tests {
         ] {
             assert_eq!(
                 assertion,
-                default_resolver(serde_yaml::to_string(&value).expect("failed to parse YAML").as_bytes())
+                default_resolver(
+                    serde_yaml_ng::to_string(&value)
+                        .expect("failed to parse YAML")
+                        .as_bytes()
+                )
             );
         }
     }

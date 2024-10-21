@@ -1,12 +1,35 @@
-# 🐻‍❄️🧶 Amazon S3 Support for `remi-rs`
-**remi-s3** is an official implementation of using Remi with Amazon S3 by Noelware.
+<div align="center">
+    <h4>Official and maintained <code>remi-rs</code> crate for support of Amazon S3</h4>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.9.0">v0.9.0</a></kbd> | <a href="https://docs.rs/remi-gridfs">📜 Documentation</a>
+    <hr />
+</div>
 
-## Features
-### serde (disabled)
-Enables the use of [`serde`](https://docs.rs/serde) for (de)serializing for configuration files.
+| Crate Features  | Description                                                                          | Enabled by default? |
+| :-------------- | :----------------------------------------------------------------------------------- | ------------------- |
+| `export-crates` | Exports all the used AWS crates as a module called `aws`                             | Yes.                |
+| `unstable`      | Tap into unstable features from `remi_gridfs` and the `remi` crate.                  | No.                 |
+| [`tracing`]     | Enables the use of [`tracing::instrument`] and emit events for actions by the crate. | No.                 |
+| [`serde`]       | Enables the use of **serde** in `StorageConfig`                                      | No.                 |
+| [`log`]         | Emits log records for actions by the crate                                           | No.                 |
 
-### log (disabled)
-Enables the use of [`log`](https://docs.rs/log) for adding unstructured logging events to track down why something broke.
+## Example
+```rust,no_run
+// Cargo.toml:
+//
+// [dependencies]
+// remi = "^0"
+// remi-s3 = { version = "^0", features = ["export-crates"] }
+// tokio = { version = "^1", features = ["full"] }
 
-### tracing (disabled)
-Enables the use of [`tracing::instrument`](https://docs.rs/tracing/*/tracing/attr.instrument.html) for adding spans to method calls to track down why something went wrong or to debug performance hits.
+use remi_s3::{StorageService, StorageConfig, aws::s3};
+use remi::{StorageService as _, UploadRequest};
+
+#[tokio::main]
+async fn main() {
+}
+```
+
+[`tracing::instrument`]: https://docs.rs/tracing/*/tracing/attr.instrument.html
+[`tracing`]: https://crates.io/crates/tracing
+[`serde`]: https://serde.rs
+[`log`]: https://crates.io/crates/log

@@ -36,7 +36,8 @@ default = ["file-format", "serde_json"]
 
 file-format = ["dep:infer", "dep:file-format"]
 serde_json = ["dep:serde_json"]
-serde_yaml = ["dep:serde_yaml"]
+serde_yaml_ng = ["dep:serde_yaml_ng"]
+serde_yaml = ["serde_yaml_ng"]                 # alias for `serde_yaml_ng`
 unstable = ["remi/unstable"]
 tracing = ["dep:tracing"]
 serde = ["dep:serde"]
@@ -50,7 +51,7 @@ log = { version = "0.4.22", optional = true }
 remi = { path = "../../remi", version = "0.9.0" }
 serde = { version = "1.0.210", features = ["derive"], optional = true }
 serde_json = { version = "1.0.128", optional = true }
-serde_yaml = { version = "0.9.34", optional = true }
+serde_yaml_ng = { version = "0.10.0", optional = true }
 tokio = { version = "1.40.0", features = ["fs", "io-util"] }
 tracing = { version = "0.1.40", optional = true }
 

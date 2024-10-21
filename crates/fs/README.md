@@ -30,7 +30,7 @@ use remi::{StorageService as _, UploadRequest};
 #[tokio::main]
 async fn main() {
     // Initialize a `StorageService` that uses your local filesystem for storing files.
-    let storage = StorageService::with_directory("./data");
+    let storage = StorageService::new("./data");
 
     // Next, we will run the `init` function which will create
     // the ./data directory if it doesn't exist already.

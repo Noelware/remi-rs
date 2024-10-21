@@ -27,6 +27,6 @@ mod config;
 mod content_type;
 mod service;
 
-pub use crate::config::*;
-pub use crate::content_type::*;
-pub use crate::service::*;
+pub use config::*;
+pub use content_type::*;
+pub use service::*;
