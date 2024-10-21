@@ -88,7 +88,8 @@ impl remi::StorageService for StorageService {
             name = "remi.azure.init",
             skip_all,
             fields(
-                remi.service = "azure"
+                remi.service = "azure",
+                container = self.config.container,
             )
         )
     )]
@@ -98,11 +99,7 @@ impl remi::StorageService for StorageService {
         }
 
         #[cfg(feature = "tracing")]
-        ::tracing::info!(
-            remi.service = "azure",
-            container = self.config.container,
-            "creating blob container as it doesn't exist"
-        );
+        ::tracing::info!("creating blob container as it doesn't exist");
 
         #[cfg(feature = "log")]
         ::log::info!(
@@ -129,7 +126,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "azure",
             container = self.config.container,
             path = %path.display(),
             "opening blob in container"
@@ -166,7 +162,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "azure",
             container = self.config.container,
             path = %path.display(),
             "opening blob in container"
@@ -242,7 +237,6 @@ impl remi::StorageService for StorageService {
         if let Some(path) = path {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
-                remi.service = "gridfs",
                 file = %path.as_ref().display(),
                 "using blobs() with a given file name is not supported",
             );
@@ -322,7 +316,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "azure",
             container = self.config.container,
             path = %path.display(),
             "deleting blob in container"
@@ -359,7 +352,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "azure",
             container = self.config.container,
             path = %path.display(),
             "checking if blob is in container"
@@ -391,7 +383,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "azure",
             container = self.config.container,
             path = %path.display(),
             "uploading blob to container"
@@ -408,7 +399,6 @@ impl remi::StorageService for StorageService {
         if client.exists().await? {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
-                remi.service = "azure",
                 container = self.config.container,
                 path = %path.display(),
                 "blob with path already exists in container, skipping"

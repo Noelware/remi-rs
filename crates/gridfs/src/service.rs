@@ -89,7 +89,7 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::er
         metadata: map,
         created_at: if created_at.timestamp_millis() < 0 {
             #[cfg(feature = "tracing")]
-            ::tracing::warn!(remi.service = "gridfs", %filename, "`created_at` timestamp was negative");
+            ::tracing::warn!(%filename, "`created_at` timestamp was negative");
 
             #[cfg(feature = "log")]
             ::log::warn!("`created_at` for file {filename} was negative");
@@ -197,7 +197,7 @@ impl remi::StorageService for StorageService {
         let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
-        ::tracing::info!(remi.service = "gridfs", file = %path, "opening file");
+        ::tracing::info!(file = %path, "opening file");
 
         #[cfg(feature = "log")]
         ::log::info!("opening file [{}]", path);
@@ -207,7 +207,6 @@ impl remi::StorageService for StorageService {
         if !advanced {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
-                remi.service = "gridfs",
                 file = %path,
                 "file doesn't exist in GridFS"
             );
@@ -257,7 +256,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "gridfs",
             file = %path,
             "getting file metadata for file"
         );
@@ -276,7 +274,7 @@ impl remi::StorageService for StorageService {
         let has_advanced = cursor.advance().await?;
         if !has_advanced {
             #[cfg(feature = "tracing")]
-            ::tracing::warn!(remi.service = "gridfs", file = %path, "file doesn't exist");
+            ::tracing::warn!(file = %path, "file doesn't exist");
 
             #[cfg(feature = "log")]
             ::log::warn!("file [{}] doesn't exist", path);
@@ -309,7 +307,6 @@ impl remi::StorageService for StorageService {
         if let Some(path) = path {
             #[cfg(feature = "tracing")]
             ::tracing::warn!(
-                remi.service = "gridfs",
                 file = %path.as_ref().display(),
                 "using blobs() with a given file name is not supported",
             );
@@ -349,7 +346,7 @@ impl remi::StorageService for StorageService {
                 #[cfg(any(feature = "tracing", feature = "log"))]
                 Err(e) => {
                     #[cfg(feature = "tracing")]
-                    ::tracing::error!(remi.service = "gridfs", error = %e, "unable to convert to a file");
+                    ::tracing::error!(error = %e, "unable to convert to a file");
 
                     #[cfg(feature = "log")]
                     ::log::error!("unable to convert to a file: {e}");
@@ -378,7 +375,7 @@ impl remi::StorageService for StorageService {
         let path = self.resolve_path(path)?;
 
         #[cfg(feature = "tracing")]
-        ::tracing::info!(remi.service = "gridfs", file = %path, "deleting file");
+        ::tracing::info!(file = %path, "deleting file");
 
         #[cfg(feature = "log")]
         ::log::info!("deleting file [{}]", path);
@@ -394,7 +391,7 @@ impl remi::StorageService for StorageService {
         let has_advanced = cursor.advance().await?;
         if !has_advanced {
             #[cfg(feature = "tracing")]
-            ::tracing::warn!(remi.service = "gridfs", file = %path, "file doesn't exist");
+            ::tracing::warn!(file = %path, "file doesn't exist");
 
             #[cfg(feature = "log")]
             ::log::warn!("file [{}] doesn't exist", path);
@@ -443,7 +440,6 @@ impl remi::StorageService for StorageService {
 
         #[cfg(feature = "tracing")]
         ::tracing::info!(
-            remi.service = "gridfs",
             file = %path,
             "uploading file to GridFS..."
         );
