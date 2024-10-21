@@ -1,21 +1,61 @@
-# 🐻‍❄️🧶 Local Filesystem Support for `remi-rs`
-**remi-fs** is an official implementation of using Remi with Local Filesystem by Noelware.
+<div align="center">
+    <h4>Official and maintained <code>remi-rs</code> crate for support of the local filesystem</h4>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.9.0">v0.9.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
+    <hr />
+</div>
 
-## Features
-### serde (disabled)
-Enables the use of [`serde`](https://docs.rs/serde) for (de)serializing for configuration files.
+| Crate Features    | Description                                                                            | Enabled by default?  |
+| :---------------- | :------------------------------------------------------------------------------------- | -------------------- |
+| `unstable`        | Tap into unstable features from `remi_fs` and the `remi` crate.                        | No.                  |
+| [`serde_json`]    | Uses the [`serde_json`] crate to detect JSON documents and return `application/json`   | No.                  |
+| [`serde_yaml_ng`] | Allows to detect YAML documents with the [`serde_yaml_ng`] crate.                      | No.                  |
+| [`file-format`]   | Uses the [`file-format`] crate to find media types on any external datatype.           | Yes.                 |
+| [`tracing`]       | Enables the use of [`tracing::instrument`] and emit events for actions by the crate.   | No.                  |
+| [`infer`]         | Uses the [`infer`] crate to infer external datatypes and map them to their media type. | Yes.                 |
+| [`serde`]         | Enables the use of **serde** in `StorageConfig`                                        | No.                  |
+| [`log`]           | Emits log records for actions by the crate                                             | No.                  |
 
-### log (disabled)
-Enables the use of [`log`](https://docs.rs/log) for adding unstructured logging events to track down why something broke.
+## Example
+```rust,no_run
+// Cargo.toml:
+//
+// [dependencies]
+// remi = "^0"
+// remi-fs = "^0"
+// tokio = { version = "^1", features = ["full"] }
 
-### tracing (disabled)
-Enables the use of [`tracing::instrument`](https://docs.rs/tracing/*/tracing/attr.instrument.html) for adding spans to method calls to track down why something went wrong or to debug performance hits.
+use remi_fs::{StorageService, StorageConfig};
+use remi::{StorageService as _, UploadRequest};
 
-### file-format (enabled)
-Whether or not to include [`infer`](https://docs.rs/infer) and [`file-format`](https://docs.rs/file-format) crates when using the default content type resolver.
+#[tokio::main]
+async fn main() {
+    // Initialize a `StorageService` that uses your local filesystem for storing files.
+    let storage = StorageService::with_directory("./data");
 
-### serde_json (enabled)
-Whether or not to detect JSON file formats with `serde_json`.
+    // Next, we will run the `init` function which will create
+    // the ./data directory if it doesn't exist already.
+    storage.init().await.unwrap();
 
-### serde_yaml (disabled)
-Whether or not to detect YAML file formats with `serde_yaml`.
+    // We define a `UploadRequest`, which will set the content type to `text/plain` and set the
+    // contents of `weow.txt` to `weow fluff`.
+    let upload = UploadRequest::default()
+        .with_content_type(Some("text/plain"))
+        .with_data("weow fluff");
+
+    // Let's upload it!
+    storage.upload("./weow.txt", upload).await.unwrap();
+
+    // Let's check if it exists! This `assert!` will panic if it failed
+    // to upload.
+    assert!(storage.exists("./weow.txt").await.unwrap());
+}
+```
+
+[`tracing::instrument`]: https://docs.rs/tracing/*/tracing/attr.instrument.html
+[`serde_yaml_ng`]: https://crates.io/crates/serde_yaml_ng
+[`file-format`]: https://crates.io/crates/file-format
+[`serde_json`]: https://crates.io/crates/serde_json
+[`tracing`]: https://crates.io/crates/tracing
+[`infer`]: https://crates.io/crates/infer
+[`serde`]: https://serde.rs
+[`log`]: https://crates.io/crates/log

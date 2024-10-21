@@ -1,4 +1,4 @@
-// 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+// 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 // Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,10 +20,16 @@
 // SOFTWARE.
 
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
+#![cfg_attr(any(noeldoc, docsrs), feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 
 mod config;
 mod service;
 
-pub use crate::config::*;
-pub use crate::service::*;
+pub use config::*;
+pub use service::*;
+
+/// Exports the [`mongodb`] crate without specifying the dependency yourself.
+#[cfg(feature = "export-crates")]
+#[cfg_attr(any(noeldoc, docsrs), doc(cfg(feature = "export-crates")))]
+pub use mongodb;

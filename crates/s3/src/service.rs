@@ -1,4 +1,4 @@
-// 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+// 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 // Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -121,11 +121,7 @@ impl remi::StorageService for StorageService {
         log::info!("ensuring that bucket [{}] exists!", self.config.bucket);
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            remi.service = "s3",
-            bucket = self.config.bucket,
-            "ensuring that bucket exists"
-        );
+        tracing::info!("ensuring that bucket exists");
 
         let output = self.client.list_buckets().send().await?;
         if !output.buckets().iter().any(|x| match x.name() {
@@ -139,11 +135,7 @@ impl remi::StorageService for StorageService {
             );
 
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                remi.service = "s3",
-                bucket = self.config.bucket,
-                "creating bucket due to the bucket not existing on this AWS account"
-            );
+            tracing::info!("creating bucket due to the bucket not existing on this AWS account");
 
             #[allow(unused)]
             self.client
@@ -165,14 +157,10 @@ impl remi::StorageService for StorageService {
                     log::trace!("{output:?}");
 
                     #[cfg(feature = "tracing")]
-                    tracing::info!(
-                        remi.service = "s3",
-                        bucket = self.config.bucket,
-                        "bucket was created successfully"
-                    );
+                    tracing::info!(bucket = self.config.bucket, "bucket was created successfully");
 
                     #[cfg(feature = "tracing")]
-                    tracing::trace!(remi.service = "s3", bucket = self.config.bucket, "{output:?}");
+                    tracing::trace!(bucket = self.config.bucket, "{output:?}");
                 })?;
         }
 
@@ -197,7 +185,7 @@ impl remi::StorageService for StorageService {
         log::trace!("opening file [{normalized}]");
 
         #[cfg(feature = "tracing")]
-        tracing::trace!(remi.service = "s3", path = normalized, "opening file");
+        tracing::trace!(path = normalized, "opening file");
 
         let fut = self
             .client
@@ -243,7 +231,7 @@ impl remi::StorageService for StorageService {
         log::trace!("locating file [{normalized}]");
 
         #[cfg(feature = "tracing")]
-        tracing::trace!(remi.service = "s3", path = normalized, "locating file");
+        tracing::trace!(path = normalized, "locating file");
 
         let fut = self
             .client
@@ -338,7 +326,7 @@ impl remi::StorageService for StorageService {
                     log::trace!("{entry:?}");
 
                     #[cfg(feature = "tracing")]
-                    tracing::warn!(remi.service = "s3", "skipping entry due to no name");
+                    tracing::warn!("skipping entry due to no name");
 
                     #[cfg(feature = "tracing")]
                     tracing::trace!("{entry:?}");
@@ -354,7 +342,7 @@ impl remi::StorageService for StorageService {
                     log::trace!("{entry:?}");
 
                     #[cfg(feature = "tracing")]
-                    tracing::warn!(remi.service = "s3", name, "skipping entry due to no name");
+                    tracing::warn!(name, "skipping entry due to no name");
 
                     #[cfg(feature = "tracing")]
                     tracing::trace!("{entry:?}");
@@ -375,12 +363,7 @@ impl remi::StorageService for StorageService {
                             log::trace!("{entry:?}");
 
                             #[cfg(feature = "tracing")]
-                            tracing::warn!(
-                                remi.service = "s3",
-                                name,
-                                ext = &ext,
-                                "skipping entry due to extension not being allowed"
-                            );
+                            tracing::warn!(name, ext = &ext, "skipping entry due to extension not being allowed");
 
                             #[cfg(feature = "tracing")]
                             tracing::trace!("{entry:?}");
@@ -404,9 +387,8 @@ impl remi::StorageService for StorageService {
 
                         #[cfg(feature = "tracing")]
                         tracing::warn!(
-                            remi.service = "s3",
                             name,
-                            error = tracing::field::display(e),
+                            error = %e,
                             "received SDK error when trying to getting blob information"
                         );
 
@@ -510,12 +492,7 @@ impl remi::StorageService for StorageService {
         log::trace!("uploading object [{normalized}] with content type [{content_type}]");
 
         #[cfg(feature = "tracing")]
-        tracing::trace!(
-            remi.service = "s3",
-            path = normalized,
-            content_type,
-            "uploading object with content type to Amazon S3"
-        );
+        tracing::trace!(content_type, "uploading object with content type to Amazon S3");
 
         let len = options.data.len();
         let stream = ByteStream::from(options.data);
@@ -543,6 +520,8 @@ impl remi::StorageService for StorageService {
             .map_err(From::from)
     }
 
+    #[cfg(feature = "unstable")]
+    #[cfg_attr(any(noeldoc, docrs), doc(cfg(feature = "unstable")))]
     #[cfg_attr(feature = "tracing", tracing::instrument(name = "remi.s3.healthcheck", skip_all))]
     async fn healthcheck(&self) -> Result<(), Self::Error> {
         #[cfg(feature = "log")]

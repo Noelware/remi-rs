@@ -1,4 +1,4 @@
-# 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+# 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 # Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,26 +21,29 @@
 
 [package]
 name = "remi-fs"
-description = "🐻‍❄️🧶 Local filesystem implementation for remi"
+description = "🐻‍❄️🧶 Official and maintained remi-rs crate for support of the local filesystem"
 version.workspace = true
 repository.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(noeldoc)'] }
+
 [features]
+default = ["file-format", "serde_json"]
+
 file-format = ["dep:infer", "dep:file-format"]
 serde_json = ["dep:serde_json"]
 serde_yaml = ["dep:serde_yaml"]
-default = ["file-format", "serde_json"]
+unstable = ["remi/unstable"]
 tracing = ["dep:tracing"]
 serde = ["dep:serde"]
 log = ["dep:log"]
 
 [dependencies]
-async-trait = "0.1.83"
-bytes = "1.7.2"
-dirs = "5.0.1"
+etcetera = "0.8.0"
 file-format = { version = "0.25.0", features = ["reader-txt"], optional = true }
 infer = { version = "0.16.0", default-features = false, optional = true }
 log = { version = "0.4.22", optional = true }

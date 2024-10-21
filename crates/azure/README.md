@@ -1,12 +1,13 @@
 <div align="center">
     <h4>Official and maintained <code>remi-rs</code> crate for support of Microsoft's Azure Blob Storage</h4>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.9.0">v0.9.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
     <hr />
-    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.9.0">v0.9.0</a></kbd> | <a href="https://docs.rs/remi">:scroll: Documentation</a>
 </div>
 
 | Crate Features | Description                                                                          | Enabled by default? |
 | :------------- | :----------------------------------------------------------------------------------- | ------------------- |
 | `export-azure` | Exports all the used Azure crates as a module called `core`                          | Yes.                |
+| `unstable`     | Tap into unstable features from `remi_azure` and the `remi` crate.                   | No.                 |
 | [`tracing`]    | Enables the use of [`tracing::instrument`] and emit events for actions by the crate. | No.                 |
 | [`serde`]      | Enables the use of **serde** in `StorageConfig`                                      | No.                 |
 | [`log`]        | Emits log records for actions by the crate                                           | No.                 |
@@ -17,7 +18,7 @@
 //
 // [dependencies]
 // remi = "^0"
-// remi-azure = "^0"
+// remi-azure = { version = "^0", features = ["export-azure"] }
 // tokio = { version = "^1", features = ["full"] }
 
 use remi_azure::{StorageService, StorageConfig, Credential, core};
@@ -26,9 +27,9 @@ use remi::{StorageService as _, UploadRequest};
 #[tokio::main]
 async fn main() {
     let storage = StorageService::new(StorageConfig {
-        credential: Credential::Anonymous,
-        location: core::storage::CloudLocation::Public,
+        credentials: Credential::Anonymous,
         container: "my-container".into(),
+        location: core::storage::CloudLocation::Public { account: "my-account".into() },
     });
 
     // Initialize the container. This will:
@@ -50,12 +51,6 @@ async fn main() {
     // Let's check if it exists! This `assert!` will panic if it failed
     // to upload.
     assert!(storage.exists("weow.txt").await.unwrap());
-
-    // Now we can query multiple "blobs"
-    //
-    // remi-rs defines blobs as either a directory or a file, since
-    // Azure only lets us look up files as files, all of them will
-    // be of `Blob::File`.
 }
 ```
 

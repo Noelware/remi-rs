@@ -1,4 +1,4 @@
-# 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+# 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 # Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,12 +21,16 @@
 
 [package]
 name = "remi"
-description = "🐻‍❄️🧶 Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers"
+description = "🐻‍❄️🧶 Asynchronous Rust crate to handle communication between applications and object storage providers"
 version.workspace = true
 repository.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[features]
+default = []
+unstable = []
 
 [dependencies]
 async-trait = "0.1.80"

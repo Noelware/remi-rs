@@ -1,4 +1,4 @@
-// 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+// 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 // Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,7 +20,26 @@
 // SOFTWARE.
 
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
-#![doc = include_str!("../README.md")]
+//! **remi-rs** is a Rust edition of Noelware's Java library [remi](https://github.com/Noelware/remi) that was
+//! discontinuted on **December 15th, 2023** and is the primary library that Noelware uses and maintained.
+//!
+//! **remi-rs** is a easy way to communicate with object storage providers like Microsoft Azure and Amazon S3.
+//! It is an abstraction on common methods (like fetching, creating, listing, etc.) called a "storage service"
+//! where it implements a set of methods that is commonly used in applications.
+//!
+//! **Warning** — All code in the repository is VERY EXPERIMENTAL and things can break at anytime &
+//! be removed without any notice.
+//!
+//! ## Projects using `remi-rs`
+//! - [📦 **charted-server**](https://github.com/charted-dev/charted)
+//! - [🪶 **Hazel**](https://github.com/Noelware/hazel)
+//! - [🐾 **ume**](https://github.com/auguwu/floofy.dev)
+//!
+//! ## Official Crates
+//! - [**remi-gridfs**](https://crates.io/crates/remi-gridfs)
+//! - [**remi-azure**](https://crates.io/crates/remi-azure)
+//! - [**remi-s3**](https://crates.io/crates/remi-s3)
+//! - [**remi-fs**](https://crates.io/crates/remi-fs)
 
 use std::{borrow::Cow, path::Path};
 
@@ -115,6 +134,8 @@ pub trait StorageService: Send + Sync {
     where
         Self: Sized;
 
+    #[cfg(feature = "unstable")]
+    #[cfg_attr(any(noeldoc, docsrs), doc(cfg(feature = "unstable")))]
     /// Performs any healthchecks to determine the storage service's health.
     async fn healthcheck(&self) -> Result<(), Self::Error> {
         Ok(())

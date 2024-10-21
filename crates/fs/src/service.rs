@@ -1,4 +1,4 @@
-// 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+// 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 // Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,9 +20,7 @@
 // SOFTWARE.
 
 use crate::{default_resolver, Config, ContentTypeResolver};
-use async_trait::async_trait;
-use bytes::Bytes;
-use remi::{Blob, Directory, File, ListBlobsRequest, StorageService as _, UploadRequest};
+use remi::{async_trait, Blob, Bytes, Directory, File, ListBlobsRequest, StorageService as _, UploadRequest};
 use std::{
     borrow::Cow,
     io,
@@ -82,14 +80,10 @@ impl StorageService {
         let path = path.as_ref();
 
         #[cfg(feature = "tracing")]
-        tracing::trace!(
-            remi.service = "fs",
-            path = tracing::field::display(path.display()),
-            "resolving path"
-        );
+        tracing::trace!("resolving path");
 
         #[cfg(feature = "log")]
-        log::trace!("resolving path {}", path.display());
+        log::trace!("resolving path: {}", path.display());
 
         if path == self.config.directory {
             return std::fs::canonicalize(&self.config.directory).map(|x| Ok(Some(x)))?;
@@ -99,9 +93,7 @@ impl StorageService {
             let Some(directory) = self.normalize(&self.config.directory)? else {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(
-                    remi.service = "fs",
-                    path = tracing::field::display(path.display()),
-                    directory = tracing::field::display(self.config.directory.display()),
+                    directory = %self.config.directory.display(),
                     "unable to resolve directory from config"
                 );
 
@@ -114,36 +106,34 @@ impl StorageService {
             let normalized = format!("{}/{}", directory.display(), path.strip_prefix("./").unwrap().display());
 
             #[cfg(feature = "tracing")]
-            tracing::trace!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
+            tracing::trace!(%normalized, "resolved path to");
 
             #[cfg(feature = "log")]
-            log::trace!("resolved path {} to {normalized}", path.display());
+            log::trace!("resolved path {} ~> {normalized}", path.display());
 
             return Ok(Some(Path::new(&normalized).to_path_buf()));
         }
 
         if path.starts_with("~/") {
-            let Some(homedir) = dirs::home_dir() else {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    remi.service = "fs",
-                    path = tracing::field::display(path.display()),
-                    "unable to resolve home directory"
-                );
+            let homedir = etcetera::home_dir()
+                .inspect_err(|e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %e, "failed to get home directory");
 
-                #[cfg(feature = "log")]
-                log::warn!("unable to resolve home directory");
+                    #[cfg(feature = "log")]
+                    log::error!("failed to get home directory: {e}");
 
-                return Ok(None);
-            };
+                    let _ = e;
+                })
+                .map_err(|_| <std::io::ErrorKind as Into<std::io::Error>>::into(io::ErrorKind::InvalidData))?;
 
             let normalized = format!("{}/{}", homedir.display(), path.strip_prefix("~/").unwrap().display());
 
             #[cfg(feature = "tracing")]
-            tracing::trace!(remi.service = "fs", path = tracing::field::display(path.display()), %normalized, "resolved path to");
+            tracing::trace!(%normalized, "resolved path to");
 
             #[cfg(feature = "log")]
-            log::trace!("resolved path {} to {normalized}", path.display());
+            log::trace!("resolved path {} ~> {normalized}", path.display());
 
             return Ok(Some(Path::new(&normalized).to_path_buf()));
         }
@@ -258,11 +248,7 @@ impl remi::StorageService for StorageService {
     async fn init(&self) -> io::Result<()> {
         if !self.config.directory.try_exists()? {
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                remi.service = "fs",
-                directory = tracing::field::display(self.config.directory.display()),
-                "creating directory since it doesn't exist"
-            );
+            tracing::info!("creating directory since it doesn't exist");
 
             #[cfg(feature = "log")]
             log::info!(
@@ -273,6 +259,8 @@ impl remi::StorageService for StorageService {
             fs::create_dir_all(&self.config.directory).await?;
         }
 
+        // TODO(@auguwu): once issue rust-lang/rust#86422 is stablised,
+        // use io::ErrorKind::NotADirectory instead
         if !self.config.directory.is_dir() {
             return Err(Error::new(
                 io::ErrorKind::InvalidData,
@@ -298,11 +286,7 @@ impl remi::StorageService for StorageService {
         let path = path.as_ref();
         let Some(path) = self.normalize(path)? else {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "path given couldn't be normalized"
-            );
+            tracing::warn!("path given couldn't be normalized");
 
             #[cfg(feature = "log")]
             log::warn!("path given [{}] was a file, not a directory", path.display());
@@ -312,11 +296,7 @@ impl remi::StorageService for StorageService {
 
         if !path.try_exists()? {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "path doesn't exist"
-            );
+            tracing::warn!("path doesn't exist");
 
             #[cfg(feature = "log")]
             log::warn!("path [{}] doesn't exist", path.display());
@@ -324,6 +304,8 @@ impl remi::StorageService for StorageService {
             return Ok(None);
         }
 
+        // TODO(@auguwu): once issue rust-lang/rust#86422 is stablised,
+        // use io::ErrorKind::NotADirectory instead
         if path.is_dir() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -332,11 +314,7 @@ impl remi::StorageService for StorageService {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::trace!(
-            remi.service = "fs",
-            path = tracing::field::display(path.display()),
-            "attempting to open file"
-        );
+        tracing::trace!("attempting to open file");
 
         #[cfg(feature = "log")]
         log::trace!("attempting to open file [{}]", path.display());
@@ -373,11 +351,7 @@ impl remi::StorageService for StorageService {
         let path = path.as_ref();
         let Some(path) = self.normalize(path)? else {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "path given couldn't be normalized"
-            );
+            tracing::warn!("path given couldn't be normalized");
 
             #[cfg(feature = "log")]
             log::warn!("path given [{}] couldn't be normalized", path.display());
@@ -438,11 +412,7 @@ impl remi::StorageService for StorageService {
 
         let Some(path) = self.normalize(path)? else {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "path given couldn't be normalized"
-            );
+            tracing::warn!("path given couldn't be normalized");
 
             #[cfg(feature = "log")]
             log::warn!("path given [{}] was a file, not a directory", path.display());
@@ -452,11 +422,7 @@ impl remi::StorageService for StorageService {
 
         if path.is_file() {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "path given was a file, not a directory"
-            );
+            tracing::warn!("path given was a file, not a directory");
 
             #[cfg(feature = "log")]
             log::warn!("path given [{}] was a file, not a directory", path.display());
@@ -466,12 +432,7 @@ impl remi::StorageService for StorageService {
 
         let search = format!("{}{prefix}", path.display());
         #[cfg(feature = "tracing")]
-        tracing::trace!(
-            remi.service = "fs",
-            %search,
-            path = tracing::field::display(path.display()),
-            "attempting to search all blobs in given path"
-        );
+        tracing::trace!(%search, "attempting to search all blobs in given path");
 
         #[cfg(feature = "log")]
         log::trace!(
@@ -546,11 +507,7 @@ impl remi::StorageService for StorageService {
 
         if path.is_dir() {
             #[cfg(feature = "tracing")]
-            tracing::trace!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "deleting directory"
-            );
+            tracing::trace!("deleting directory");
 
             #[cfg(feature = "log")]
             log::trace!("deleting directory [{}]", path.display());
@@ -560,11 +517,7 @@ impl remi::StorageService for StorageService {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::trace!(
-            remi.service = "fs",
-            path = tracing::field::display(path.display()),
-            "deleting file"
-        );
+        tracing::trace!("deleting file");
 
         #[cfg(feature = "log")]
         log::trace!("deleting file [{}]...", path.display());
@@ -617,22 +570,14 @@ impl remi::StorageService for StorageService {
 
         if path.try_exists()? {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                remi.service = "fs",
-                path = tracing::field::display(path.display()),
-                "contents in given path will be overwritten"
-            );
+            tracing::warn!("contents in given path will be overwritten");
 
             #[cfg(feature = "log")]
             log::trace!("contents in given path [{}] will be overwritten", path.display());
         }
 
         #[cfg(feature = "tracing")]
-        tracing::warn!(
-            remi.service = "fs",
-            path = %path.display(),
-            "uploading file"
-        );
+        tracing::warn!("uploading file");
 
         #[cfg(feature = "log")]
         log::trace!("uploading file [{}]", path.display());
@@ -655,6 +600,12 @@ impl remi::StorageService for StorageService {
         file.write_all(options.data.as_ref()).await?;
         file.flush().await?;
 
+        Ok(())
+    }
+
+    #[cfg(feature = "unstable")]
+    #[cfg_attr(any(noeldoc, docrs), doc(cfg(feature = "unstable")))]
+    async fn healthcheck(&self) -> io::Result<()> {
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-// 🐻‍❄️🧶 remi-rs: Robust, and simple asynchronous Rust crate to handle storage-related communications with different storage providers
+// 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
 // Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -60,6 +60,7 @@ impl ListBlobsRequest {
     pub fn with_extensions<'a, I: Iterator<Item = &'a str>>(mut self, exts: I) -> Self {
         self.extensions
             .extend(exts.filter(|x| x.starts_with('.')).map(String::from));
+
         self
     }
 
