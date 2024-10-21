@@ -26,7 +26,7 @@ use aws_sdk_s3::{
     types::{BucketCannedAcl, ObjectCannedAcl},
 };
 
-/// Represents the main configuration struct to configure a [`S3StorageService`][crate::S3StorageService].
+/// Represents the main configuration struct to configure a [`StorageService`][crate::StorageService].
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StorageConfig {

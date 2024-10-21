@@ -34,3 +34,13 @@ mod service;
 pub use config::*;
 pub use error::*;
 pub use service::*;
+
+/// Exports the [`aws_sdk_s3`], [`aws_credential_types`], and [`aws_config`] crate without
+/// specifying the dependencies yourself.
+#[cfg(feature = "export-crates")]
+#[cfg_attr(any(noeldoc, docsrs), doc(cfg(feature = "export-crates")))]
+pub mod aws {
+    pub use aws_config as config;
+    pub use aws_credential_types as credential_types;
+    pub use aws_sdk_s3 as s3;
+}

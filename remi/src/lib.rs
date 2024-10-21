@@ -126,8 +126,7 @@ pub trait StorageService: Send + Sync {
     where
         Self: Sized;
 
-    /// Does a file upload where it writes the byte array as one call and does not do chunking. Use the [`StorageService::multipart_upload`]
-    /// method to upload chunks by a specific size.
+    /// Does a file upload where it writes the byte array as one call and does not do chunking.
     ///
     /// * since: 0.1.0
     async fn upload<P: AsRef<Path> + Send>(&self, path: P, options: UploadRequest) -> Result<(), Self::Error>

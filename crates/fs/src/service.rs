@@ -67,7 +67,7 @@ impl StorageService {
     /// * If the path starts with `./`, then it will resolve from [`Config::directory`] if
     ///   the directory was found. Otherwise, it'll use the current directory.
     ///
-    /// * If the path starts with `~/`, then it will resolve from the home directory from [`dirs::home_dir`].
+    /// * If the path starts with `~/`, then it will resolve from the home directory from [`etcetera::home_dir`].
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -604,7 +604,7 @@ impl remi::StorageService for StorageService {
     }
 
     #[cfg(feature = "unstable")]
-    #[cfg_attr(any(noeldoc, docrs), doc(cfg(feature = "unstable")))]
+    #[cfg_attr(any(noeldoc, docsrs), doc(cfg(feature = "unstable")))]
     async fn healthcheck(&self) -> io::Result<()> {
         Ok(())
     }

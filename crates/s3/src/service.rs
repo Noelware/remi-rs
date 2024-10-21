@@ -20,14 +20,12 @@
 // SOFTWARE.
 
 use crate::StorageConfig;
-use async_trait::async_trait;
 use aws_sdk_s3::{
     primitives::ByteStream,
     types::{BucketCannedAcl, Object, ObjectCannedAcl},
     Client, Config,
 };
-use bytes::Bytes;
-use remi::{Blob, Directory, File, ListBlobsRequest, UploadRequest};
+use remi::{async_trait, Blob, Bytes, Directory, File, ListBlobsRequest, UploadRequest};
 use std::{borrow::Cow, path::Path};
 
 const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
@@ -56,10 +54,12 @@ impl StorageService {
         }
     }
 
-    /// Overwrites a [`S3StorageConfig`] instance on this service without modifying the
+    /// Overwrites a [`StorageConfig`] instance on this service without modifying the
     /// actual SDK client. This is useful if you used the [`StorageService::with_sdk_conf`]
-    /// method. If you wish to modify the SDK client with a [`S3StorageConfig`],
-    /// then use the [`S3StorageConfig::new`] method instead.
+    /// method.
+    ///
+    /// If you wish to modify the SDK client with a [`StorageConfig`], then use the [`StorageService::new`]
+    /// method instead.
     pub fn with_config(self, config: StorageConfig) -> StorageService {
         StorageService {
             client: self.client,
@@ -521,7 +521,7 @@ impl remi::StorageService for StorageService {
     }
 
     #[cfg(feature = "unstable")]
-    #[cfg_attr(any(noeldoc, docrs), doc(cfg(feature = "unstable")))]
+    #[cfg_attr(any(noeldoc, docsrs), doc(cfg(feature = "unstable")))]
     #[cfg_attr(feature = "tracing", tracing::instrument(name = "remi.s3.healthcheck", skip_all))]
     async fn healthcheck(&self) -> Result<(), Self::Error> {
         #[cfg(feature = "log")]

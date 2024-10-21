@@ -46,7 +46,7 @@ impl StorageService {
         }
     }
 
-    /// Creates a new [`StorageClient`] with an existing [`ContainerClient`].
+    /// Creates a new [`StorageService`] with an existing [`ContainerClient`].
     pub fn with_container_client(container: ContainerClient) -> StorageService {
         Self {
             container,

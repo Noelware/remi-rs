@@ -28,6 +28,9 @@ license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(noeldoc)'] }
+
 [features]
 default = []
 unstable = []

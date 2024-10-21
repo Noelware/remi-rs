@@ -63,7 +63,7 @@ pub enum Error {
     /// server hung up without sending a complete response)
     Response(ResponseError<Response<SdkBody>>),
 
-    /// Amazon S3 was unable to list buckets. This happens when you call [`StorageService::init`][crate::StorageService::init],
+    /// Amazon S3 was unable to list buckets. This happens when you call `StorageService::init`,
     /// since the library performs checks whenever if the bucket exists or not and it needs the ability to check.
     ListBuckets(ListBucketsError),
 
@@ -93,7 +93,7 @@ pub enum Error {
     ///
     /// This might be in a unhandled state as [`ListObjectsV2Error::NoSuchBucket`] should never
     /// be matched since `remi-s3` handles creating buckets if they don't exist when
-    /// [`StorageService::init`][remi::StorageService::int] is called.
+    /// [`StorageService::init`][remi::StorageService::init] is called.
     ///
     /// * this would be thrown from the [`StorageService::open`][remi::StorageService::open]
     ///   or the [`StorageService::blob`][remi::StorageService::blob] trait methods.

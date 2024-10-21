@@ -21,12 +21,15 @@
 
 [package]
 name = "remi-s3"
-description = "🐻‍❄️🧶 Amazon S3 implementation of `remi`"
+description = "🐻‍❄️🧶 Official and maintained remi-rs crate for support of Amazon S3"
 version.workspace = true
 repository.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(noeldoc)'] }
 
 [features]
 default = []
@@ -38,12 +41,10 @@ serde = ["dep:serde"]
 log = ["dep:log"]
 
 [dependencies]
-async-trait = "0.1.83"
 aws-config = "1.5.8"
 aws-credential-types = "1.2.1"
 aws-sdk-s3 = { version = "1.56.0", features = ["behavior-version-latest"] }
 aws-smithy-runtime-api = "1.7.2"
-bytes = "1.7.2"
 log = { version = "0.4.22", optional = true }
 remi = { path = "../../remi", version = "0.9.0" }
 serde = { version = "1.0.210", features = ["derive"], optional = true }
