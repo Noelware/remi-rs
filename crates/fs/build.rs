@@ -19,21 +19,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use std::path::{Path, PathBuf};
+use rustc_version::Version;
 
-/// Represents the main configuration of using the `StorageService` implementation of remi-fs.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct StorageConfig {
-    /// [`PathBuf`] to the directory where `remi-fs` can locate files from with the `./` prefix.
-    pub directory: PathBuf,
-}
+fn main() {
+    println!("cargo::rerun-if-changed=build.rs");
 
-impl StorageConfig {
-    /// Creates a new [`Config`] instance.
-    pub fn new<P: AsRef<Path>>(path: P) -> StorageConfig {
-        StorageConfig {
-            directory: path.as_ref().into(),
-        }
+    let Version { minor, .. } = rustc_version::version().unwrap();
+    if minor >= 77 {
+        println!("cargo::rustc-check-cfg=cfg(no_io_errorkind)");
+    }
+
+    // `io::ErrorKind` variants were stablised in v1.83
+    // https://blog.rust-lang.org/2024/11/28/Rust-1.83.0.html
+    if minor < 83 {
+        println!("cargo::rustc-cfg=no_io_errorkind");
     }
 }

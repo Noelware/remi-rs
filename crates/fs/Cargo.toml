@@ -27,6 +27,8 @@ repository.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+categories = ["filesystem"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(noeldoc)'] }
@@ -37,7 +39,6 @@ default = ["file-format", "serde_json"]
 file-format = ["dep:infer", "dep:file-format"]
 serde_json = ["dep:serde_json"]
 serde_yaml_ng = ["dep:serde_yaml_ng"]
-serde_yaml = ["serde_yaml_ng"]                 # alias for `serde_yaml_ng`
 unstable = ["remi/unstable"]
 tracing = ["dep:tracing"]
 serde = ["dep:serde"]
@@ -68,3 +69,6 @@ tracing-subscriber = "0.3.18"
 name = "filesystem"
 path = "./examples/filesystem.rs"
 required-features = ["tracing"]
+
+[build-dependencies]
+rustc_version = "0.4.1"

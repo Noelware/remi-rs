@@ -28,7 +28,11 @@ version = "0.10.0"
 repository = "https://github.com/Noelware/remi-rs"
 license = "MIT"
 edition = "2021"
-rust-version = "1.76"
+rust-version = "1.78"
+authors = [
+    "Noel Towa <cutie@floofy.dev>",
+    "Spotlight <spotlight@joscomputing.space>",
+]
 
 [workspace.dependencies]
 bollard = "0.17.1"

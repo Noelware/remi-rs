@@ -259,9 +259,14 @@ impl remi::StorageService for StorageService {
             fs::create_dir_all(&self.config.directory).await?;
         }
 
-        // TODO(@auguwu): once issue rust-lang/rust#86422 is stablised,
-        // use io::ErrorKind::NotADirectory instead
         if !self.config.directory.is_dir() {
+            #[cfg(not(no_io_errorkind))]
+            return Err(Error::new(
+                io::ErrorKind::NotADirectory,
+                format!("path [{}] is a file, not a directory", self.config.directory.display()),
+            ));
+
+            #[cfg(no_io_errorkind)]
             return Err(Error::new(
                 io::ErrorKind::InvalidData,
                 format!("path [{}] is a file, not a directory", self.config.directory.display()),
@@ -304,12 +309,17 @@ impl remi::StorageService for StorageService {
             return Ok(None);
         }
 
-        // TODO(@auguwu): once issue rust-lang/rust#86422 is stablised,
-        // use io::ErrorKind::NotADirectory instead
         if path.is_dir() {
-            return Err(io::Error::new(
+            #[cfg(not(no_io_errorkind))]
+            return Err(Error::new(
+                io::ErrorKind::NotADirectory,
+                format!("path [{}] is a file, not a directory", self.config.directory.display()),
+            ));
+
+            #[cfg(no_io_errorkind)]
+            return Err(Error::new(
                 io::ErrorKind::InvalidData,
-                "path given was a directory, expected a file",
+                format!("path [{}] is a file, not a directory", self.config.directory.display()),
             ));
         }
 
