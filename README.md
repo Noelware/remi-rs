@@ -2,7 +2,7 @@
 <div align="center">
     <h3><code>remi-rs</code> by Noelware, LLC.</h3>
     <h4>Asynchronous Rust crate to handle communication between applications and object storage providers</h4>
-    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.9.0">v0.9.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.10.0">v0.10.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
     <hr />
 </div>
 
@@ -15,7 +15,7 @@
 ## Projects using `remi-rs`
 - [📦 **charted-server**](https://github.com/charted-dev/charted)
 - [🪶 **Hazel**](https://github.com/Noelware/hazel)
-- [🐾 **ume**](https://github.com/auguwu/floofy.dev)
+- [🐾 **ume**](https://github.com/auguwu/ume)
 
 *(Is your project using `remi-rs`? You can link your project here by submitting a PR!)*
 

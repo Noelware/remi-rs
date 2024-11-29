@@ -1,6 +1,6 @@
 <div align="center">
     <h4>Official and maintained <code>remi-rs</code> crate for support of the local filesystem</h4>
-    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.9.0">v0.9.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.10.0">v0.10.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
     <hr />
 </div>
 
