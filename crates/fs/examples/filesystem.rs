@@ -28,7 +28,7 @@
 // tokio = { version = "*", features = ["full"] }
 
 use remi::{Blob, StorageService as _, UploadRequest};
-use remi_fs::{Config, StorageService};
+use remi_fs::{StorageConfig, StorageService};
 use std::{io, path::PathBuf};
 use tracing_subscriber::prelude::*;
 
@@ -38,7 +38,7 @@ async fn main() -> Result<(), io::Error> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let config = Config {
+    let config = StorageConfig {
         directory: PathBuf::from("./data"),
     };
 
