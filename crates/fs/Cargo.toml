@@ -46,7 +46,7 @@ log = ["dep:log"]
 
 [dependencies]
 etcetera = "0.8.0"
-file-format = { version = "0.25.0", features = ["reader-txt"], optional = true }
+file-format = { version = "0.26.0", features = ["reader-txt"], optional = true }
 infer = { version = "0.16.0", default-features = false, optional = true }
 log = { version = "0.4.22", optional = true }
 remi = { path = "../../remi", version = "0.10.0" }
