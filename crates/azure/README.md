@@ -30,7 +30,7 @@ async fn main() {
         credentials: Credential::Anonymous,
         container: "my-container".into(),
         location: core::storage::CloudLocation::Public { account: "my-account".into() },
-    });
+    }).unwrap();
 
     // Initialize the container. This will:
     //

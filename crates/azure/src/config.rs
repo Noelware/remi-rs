@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 use azure_core::auth::Secret;
-use azure_storage::{CloudLocation, StorageCredentials};
+use azure_storage::StorageCredentials;
 use azure_storage_blobs::prelude::{ClientBuilder, ContainerClient};
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,6 @@ pub struct StorageConfig {
     pub credentials: Credential,
 
     /// Location on the cloud that you're trying to access the Azure Blob Storage service.
-    #[cfg_attr(feature = "serde", serde(with = "azure_serde::cloud_location"))]
     pub location: CloudLocation,
 
     /// Blob Storage container to grab any blob from.
@@ -43,120 +42,99 @@ impl StorageConfig {
         StorageConfig {
             credentials: Credential::Anonymous,
             container: "dummy-test".into(),
-            location: CloudLocation::Public {
-                account: "dummy".into(),
-            },
+            location: CloudLocation::Public("dummy".into()),
         }
     }
 }
 
+/// Credentials information for creating a blob container.
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(untagged))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Credential {
-    AccessKey {
-        account: String,
-        access_key: String,
-    },
+    /// An access-key based credential.
+    /// <https://docs.microsoft.com/azure/storage/common/storage-account-keys-manage>
+    AccessKey { account: String, access_key: String },
 
+    /// A shared access signature for temporary access to blobs.
+    ///
+    /// - <https://docs.microsoft.com/azure/storage/common/storage-sas-overview>
+    /// - <https://docs.microsoft.com/azure/applied-ai-services/form-recognizer/create-sas-tokens>
     SASToken(String),
+
+    /// OAuth2.0-based Bearer token credential.
+    /// <https://docs.microsoft.com/rest/api/storageservices/authorize-with-azure-active-directory>
     Bearer(String),
 
+    /// Anonymous credential, doesn't require further authentication.
     #[default]
     Anonymous,
 }
 
-impl From<Credential> for StorageCredentials {
-    fn from(value: Credential) -> Self {
+impl TryFrom<Credential> for StorageCredentials {
+    type Error = azure_core::Error;
+
+    fn try_from(value: Credential) -> Result<Self, Self::Error> {
         match value {
             Credential::AccessKey { account, access_key } => {
-                StorageCredentials::access_key(account, Secret::new(access_key))
+                Ok(StorageCredentials::access_key(account, Secret::new(access_key)))
             }
 
-            Credential::SASToken(token) => StorageCredentials::sas_token(token).expect("valid shared access signature"),
-            Credential::Bearer(token) => StorageCredentials::bearer_token(token),
-            Credential::Anonymous => StorageCredentials::anonymous(),
+            Credential::SASToken(token) => StorageCredentials::sas_token(token),
+            Credential::Bearer(token) => Ok(StorageCredentials::bearer_token(token)),
+            Credential::Anonymous => Ok(StorageCredentials::anonymous()),
         }
     }
 }
 
-impl From<StorageConfig> for ContainerClient {
-    fn from(value: StorageConfig) -> Self {
-        ClientBuilder::with_location::<StorageCredentials>(value.location, value.credentials.into())
-            .container_client(value.container)
+impl TryFrom<StorageConfig> for ContainerClient {
+    type Error = azure_core::Error;
+
+    fn try_from(value: StorageConfig) -> Result<Self, Self::Error> {
+        Ok(
+            ClientBuilder::with_location::<StorageCredentials>(value.location.into(), value.credentials.try_into()?)
+                .container_client(value.container),
+        )
     }
 }
 
-#[cfg(feature = "serde")]
-pub(crate) mod azure_serde {
-    pub(crate) mod cloud_location {
-        use azure_storage::CloudLocation;
-        use serde::{
-            ser::{SerializeMap, Serializer},
-            Deserialize, Deserializer,
-        };
-        use std::collections::HashMap;
+/// Newtype enumeration around [`azure_core::CloudLocation`].
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+pub enum CloudLocation {
+    /// Location that points to Microsoft Azure's Public Cloud.
+    Public(String),
 
-        pub fn serialize<S: Serializer>(value: &CloudLocation, serializer: S) -> Result<S::Ok, S::Error> {
-            match value {
-                CloudLocation::Public { account } => {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry("public", &account)?;
-                    map.end()
-                }
+    /// Location that points to Microsoft Azure's China Cloud.
+    China(String),
 
-                CloudLocation::China { account } => {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry("china", &account)?;
-                    map.end()
-                }
+    /// Configures the location around emulation software of Azure Blob Storage.
+    Emulator {
+        /// Address to the emulator
+        address: String,
 
-                CloudLocation::Emulator { address, port } => {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry("emulator", &format!("{address}:{port}"))?;
-                    map.end()
-                }
+        /// Port to the emulator
+        port: u16,
+    },
 
-                CloudLocation::Custom { .. } => {
-                    unimplemented!("not supported (yet)")
-                }
-            }
-        }
+    /// Custom location that supports the Azure Blob Storage API.
+    Custom {
+        /// Account name.
+        account: String,
 
-        pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<CloudLocation, D::Error> {
-            use serde::de::Error;
+        /// URI to point to the service.
+        uri: String,
+    },
+}
 
-            let map = HashMap::<String, String>::deserialize(deserializer)?;
-            if let Some(val) = map.get("public") {
-                return Ok(CloudLocation::Public {
-                    account: val.to_owned(),
-                });
-            }
-
-            if let Some(val) = map.get("china") {
-                return Ok(CloudLocation::China {
-                    account: val.to_owned(),
-                });
-            }
-
-            if let Some(mapping) = map.get("emulator") {
-                let Some((addr, port)) = mapping.split_once(':') else {
-                    return Err(D::Error::custom(format!("failed to parse {mapping} as 'addr:port'")));
-                };
-
-                if port.contains(':') {
-                    return Err(D::Error::custom("address:port mapping in `emulator` key "));
-                }
-
-                return Ok(CloudLocation::Emulator {
-                    address: addr.to_owned(),
-                    port: port
-                        .parse()
-                        .map_err(|err| D::Error::custom(format!("failed to parse {port} as u16: {err}")))?,
-                });
-            }
-
-            Err(D::Error::custom("unhandled"))
+impl From<CloudLocation> for azure_storage::CloudLocation {
+    fn from(value: CloudLocation) -> Self {
+        match value {
+            CloudLocation::Public(account) => azure_storage::CloudLocation::Public { account },
+            CloudLocation::China(account) => azure_storage::CloudLocation::China { account },
+            CloudLocation::Emulator { address, port } => azure_storage::CloudLocation::Emulator { address, port },
+            CloudLocation::Custom { account, uri } => azure_storage::CloudLocation::Custom { account, uri },
         }
     }
 }
