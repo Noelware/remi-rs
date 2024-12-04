@@ -33,7 +33,7 @@ authors.workspace = true
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(noeldoc)'] }
 
 [features]
-default = ["export-azure"]
+default = []
 
 export-azure = []
 tracing = ["dep:tracing"]

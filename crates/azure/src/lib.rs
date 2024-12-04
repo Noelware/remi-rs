@@ -32,13 +32,12 @@ pub mod core {
 
     /// Exports the [`azure_storage`] and [`azure_storage_blobs`]
     /// crates without defining them as owned dependencies.
+    #[cfg_attr(any(noeldoc, docsrs), doc(cfg(feature = "export-azure")))]
     pub mod storage {
         pub use azure_storage::*;
 
         /// Exports the [`azure_storage_blobs`] crate without defining them as owned dependencies.
-        pub mod blobs {
-            pub use azure_storage_blobs::*;
-        }
+        pub use azure_storage_blobs as blobs;
     }
 }
 

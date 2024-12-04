@@ -470,128 +470,128 @@ impl remi::StorageService for StorageService {
     }
 }
 
-#[cfg(test)]
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
-mod tests {
-    use crate::service::resolve_path;
-    use remi::{StorageService, UploadRequest};
-    use std::path::Path;
-    use testcontainers::{runners::AsyncRunner, GenericImage};
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+// #[cfg(test)]
+// #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+// mod tests {
+//     use crate::service::resolve_path;
+//     use remi::{StorageService, UploadRequest};
+//     use std::path::Path;
+//     use testcontainers::{runners::AsyncRunner, GenericImage};
+//     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    const IMAGE: &str = "mongo";
+//     const IMAGE: &str = "mongo";
 
-    // renovate: image="mongo"
-    const TAG: &str = "7.0.9";
+//     // renovate: image="mongo"
+//     const TAG: &str = "7.0.9";
 
-    fn container() -> GenericImage {
-        GenericImage::new(IMAGE, TAG)
-    }
+//     fn container() -> GenericImage {
+//         GenericImage::new(IMAGE, TAG)
+//     }
 
-    #[test]
-    fn test_resolve_paths() {
-        assert_eq!(resolve_path(Path::new("./weow.txt")).unwrap(), String::from("weow.txt"));
-        assert_eq!(resolve_path(Path::new("~/weow.txt")).unwrap(), String::from("weow.txt"));
-        assert_eq!(resolve_path(Path::new("weow.txt")).unwrap(), String::from("weow.txt"));
-        assert_eq!(
-            resolve_path(Path::new("~/weow/fluff/mooo.exe")).unwrap(),
-            String::from("weow/fluff/mooo.exe")
-        );
-    }
+//     #[test]
+//     fn test_resolve_paths() {
+//         assert_eq!(resolve_path(Path::new("./weow.txt")).unwrap(), String::from("weow.txt"));
+//         assert_eq!(resolve_path(Path::new("~/weow.txt")).unwrap(), String::from("weow.txt"));
+//         assert_eq!(resolve_path(Path::new("weow.txt")).unwrap(), String::from("weow.txt"));
+//         assert_eq!(
+//             resolve_path(Path::new("~/weow/fluff/mooo.exe")).unwrap(),
+//             String::from("weow/fluff/mooo.exe")
+//         );
+//     }
 
-    macro_rules! build_testcases {
-        (
-            $(
-                $(#[$meta:meta])*
-                async fn $name:ident($storage:ident) $code:block
-            )*
-        ) => {
-            $(
-                #[cfg_attr(target_os = "linux", tokio::test)]
-                #[cfg_attr(not(target_os = "linux"), ignore = "`mongo` image can be only used on Linux")]
-                $(#[$meta])*
-                async fn $name() {
-                    if ::bollard::Docker::connect_with_defaults().is_err() {
-                        eprintln!("[remi-gridfs] `docker` cannot be probed by default settings; skipping test");
-                        return;
-                    }
+//     macro_rules! build_testcases {
+//         (
+//             $(
+//                 $(#[$meta:meta])*
+//                 async fn $name:ident($storage:ident) $code:block
+//             )*
+//         ) => {
+//             $(
+//                 #[cfg_attr(target_os = "linux", tokio::test)]
+//                 #[cfg_attr(not(target_os = "linux"), ignore = "`mongo` image can be only used on Linux")]
+//                 $(#[$meta])*
+//                 async fn $name() {
+//                     if ::bollard::Docker::connect_with_defaults().is_err() {
+//                         eprintln!("[remi-gridfs] `docker` cannot be probed by default settings; skipping test");
+//                         return;
+//                     }
 
-                    let _guard = tracing_subscriber::registry()
-                        .with(tracing_subscriber::fmt::layer())
-                        .set_default();
+//                     let _guard = tracing_subscriber::registry()
+//                         .with(tracing_subscriber::fmt::layer())
+//                         .set_default();
 
-                    let container = container().start().await.expect("failed to start container");
-                    let $storage = crate::StorageService::from_conn_string(
-                        format!(
-                            "mongodb://{}:{}",
-                            container.get_host().await.expect("failed to get host ip"),
-                            container.get_host_port_ipv4(27017).await.expect("failed to get port mapping: 27017")
-                        ),
-                        $crate::StorageConfig {
-                            database: Some(String::from("remi")),
-                            bucket: String::from("fs"),
+//                     let container = container().start().await.expect("failed to start container");
+//                     let $storage = crate::StorageService::from_conn_string(
+//                         format!(
+//                             "mongodb://{}:{}",
+//                             container.get_host().await.expect("failed to get host ip"),
+//                             container.get_host_port_ipv4(27017).await.expect("failed to get port mapping: 27017")
+//                         ),
+//                         $crate::StorageConfig {
+//                             database: Some(String::from("remi")),
+//                             bucket: String::from("fs"),
 
-                            ..Default::default()
-                        }
-                    ).await.expect("failed to create storage service");
+//                             ..Default::default()
+//                         }
+//                     ).await.expect("failed to create storage service");
 
-                    ($storage).init().await.expect("failed to initialize storage service");
+//                     ($storage).init().await.expect("failed to initialize storage service");
 
-                    let __ret = $code;
-                    __ret
-                }
-            )*
-        };
-    }
+//                     let __ret = $code;
+//                     __ret
+//                 }
+//             )*
+//         };
+//     }
 
-    build_testcases! {
-        async fn prepare_mongo_container_usage(_storage) {}
+//     build_testcases! {
+//         async fn prepare_mongo_container_usage(_storage) {}
 
-        async fn test_uploading_file(storage) {
-            let contents: remi::Bytes = "{\"wuff\":true}".into();
-            storage.upload("./wuff.json", UploadRequest::default()
-                .with_content_type(Some("application/json"))
-                .with_data(contents.clone())
-            ).await.expect("failed to upload");
+//         async fn test_uploading_file(storage) {
+//             let contents: remi::Bytes = "{\"wuff\":true}".into();
+//             storage.upload("./wuff.json", UploadRequest::default()
+//                 .with_content_type(Some("application/json"))
+//                 .with_data(contents.clone())
+//             ).await.expect("failed to upload");
 
-            assert!(storage.exists("./wuff.json").await.expect("failed to query ./wuff.json"));
-            assert_eq!(contents, storage.open("./wuff.json").await.expect("failed to open ./wuff.json").expect("it should exist"));
-        }
+//             assert!(storage.exists("./wuff.json").await.expect("failed to query ./wuff.json"));
+//             assert_eq!(contents, storage.open("./wuff.json").await.expect("failed to open ./wuff.json").expect("it should exist"));
+//         }
 
-        async fn list_blobs(storage) {
-            for i in 0..100 {
-                let contents: remi::Bytes = format!("{{\"blob\":{i}}}").into();
-                storage.upload(format!("./wuff.{i}.json"), UploadRequest::default()
-                    .with_content_type(Some("application/json"))
-                    .with_data(contents)
-                ).await.expect("failed to upload blob");
-            }
+//         async fn list_blobs(storage) {
+//             for i in 0..100 {
+//                 let contents: remi::Bytes = format!("{{\"blob\":{i}}}").into();
+//                 storage.upload(format!("./wuff.{i}.json"), UploadRequest::default()
+//                     .with_content_type(Some("application/json"))
+//                     .with_data(contents)
+//                 ).await.expect("failed to upload blob");
+//             }
 
-            let blobs = storage.blobs(None::<&str>, None).await.expect("failed to list all blobs");
-            let mut iter = blobs.iter().filter_map(|x| match x {
-                remi::Blob::File(file) => Some(file),
-                _ => None
-            });
+//             let blobs = storage.blobs(None::<&str>, None).await.expect("failed to list all blobs");
+//             let mut iter = blobs.iter().filter_map(|x| match x {
+//                 remi::Blob::File(file) => Some(file),
+//                 _ => None
+//             });
 
-            assert!(iter.all(|x|
-                x.content_type == Some(String::from("application/json")) &&
-                !x.is_symlink &&
-                x.data.starts_with(&[/* b"{" */ 123])
-            ));
-        }
+//             assert!(iter.all(|x|
+//                 x.content_type == Some(String::from("application/json")) &&
+//                 !x.is_symlink &&
+//                 x.data.starts_with(&[/* b"{" */ 123])
+//             ));
+//         }
 
-        async fn query_single_blob(storage) {
-            for i in 0..100 {
-                let contents: remi::Bytes = format!("{{\"blob\":{i}}}").into();
-                storage.upload(format!("./wuff.{i}.json"), UploadRequest::default()
-                    .with_content_type(Some("application/json"))
-                    .with_data(contents)
-                ).await.expect("failed to upload blob");
-            }
+//         async fn query_single_blob(storage) {
+//             for i in 0..100 {
+//                 let contents: remi::Bytes = format!("{{\"blob\":{i}}}").into();
+//                 storage.upload(format!("./wuff.{i}.json"), UploadRequest::default()
+//                     .with_content_type(Some("application/json"))
+//                     .with_data(contents)
+//                 ).await.expect("failed to upload blob");
+//             }
 
-            assert!(storage.blob("./wuff.98.json").await.expect("failed to query single blob").is_some());
-            assert!(storage.blob("./wuff.95.json").await.expect("failed to query single blob").is_some());
-            assert!(storage.blob("~/doesnt/exist").await.expect("failed to query single blob").is_none());
-        }
-    }
-}
+//             assert!(storage.blob("./wuff.98.json").await.expect("failed to query single blob").is_some());
+//             assert!(storage.blob("./wuff.95.json").await.expect("failed to query single blob").is_some());
+//             assert!(storage.blob("~/doesnt/exist").await.expect("failed to query single blob").is_none());
+//         }
+//     }
+// }

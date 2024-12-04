@@ -18,10 +18,10 @@
 //
 // [dependencies]
 // remi = "^0"
-// remi-azure = { version = "^0", features = ["export-azure"] }
+// remi-azure = "^0"
 // tokio = { version = "^1", features = ["full"] }
 
-use remi_azure::{StorageService, StorageConfig, Credential, core};
+use remi_azure::{StorageService, StorageConfig, Credential, CloudLocation};
 use remi::{StorageService as _, UploadRequest};
 
 #[tokio::main]
@@ -29,7 +29,7 @@ async fn main() {
     let storage = StorageService::new(StorageConfig {
         credentials: Credential::Anonymous,
         container: "my-container".into(),
-        location: core::storage::CloudLocation::Public { account: "my-account".into() },
+        location: CloudLocation::Public("my-account".into()),
     }).unwrap();
 
     // Initialize the container. This will:
