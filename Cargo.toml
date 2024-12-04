@@ -35,5 +35,5 @@ authors = [
 ]
 
 [workspace.dependencies]
-bollard = "0.17.1"
+bollard = "0.18.0"
 testcontainers = "0.23.1"
