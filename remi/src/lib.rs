@@ -22,7 +22,7 @@
 //! **remi-rs** is a Rust edition of Noelware's Java library [remi](https://github.com/Noelware/remi) that was
 //! discontinuted on **December 15th, 2023** and is the primary library that Noelware uses and maintained.
 //!
-//! **remi-rs** is a easy way to communicate with object storage providers like Microsoft Azure and Amazon S3.
+//! **remi-rs** is a easy way to communicate with object storage providers like Azure Blob Storage and Amazon S3.
 //! It is an abstraction on common methods (like fetching, creating, listing, etc.) called a "storage service"
 //! where it implements a set of methods that is commonly used in applications.
 //!
@@ -32,7 +32,7 @@
 //! ## Projects using `remi-rs`
 //! - [📦 **charted-server**](https://github.com/charted-dev/charted)
 //! - [🪶 **Hazel**](https://github.com/Noelware/hazel)
-//! - [🐾 **ume**](https://github.com/auguwu/floofy.dev)
+//! - [🐾 **ume**](https://github.com/auguwu/ume)
 //!
 //! ## Official Crates
 //! - [**remi-gridfs**](https://crates.io/crates/remi-gridfs)

@@ -19,7 +19,44 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#![doc = include_str!("../README.md")]
+//! # 🐻‍❄️🧶 `remi_s3`
+//! The **remi_s3** crate is an official implementation of the [`remi::StorageService`]
+//! trait with Amazon S3 using the official AWS crate [`aws_sdk_s3`].
+//!
+//! [`remi::StorageSerive`]: https://docs.rs/remi/*/remi/trait.StorageService.html
+//! [`aws_sdk_s3`]: https://docs.rs/aws-sdk-s3
+//!
+//! ## Example
+//! ```rust,no_run
+//! // Cargo.toml:
+//! //
+//! // [dependencies]
+//! // remi = "^0"
+//! // remi-s3 = { version = "^0", features = ["export-crates"] }
+//! // tokio = { version = "^1", features = ["full"] }
+//!
+//! use remi_s3::{StorageService, StorageConfig, aws::s3};
+//! use remi::{StorageService as _, UploadRequest};
+//!
+//! #[tokio::main]
+//! async fn main() {
+//! }
+//! ```
+//!
+//! ## Crate Features
+//! | Crate Features  | Description                                                                          | Enabled by default? |
+//! | :-------------- | :----------------------------------------------------------------------------------- | ------------------- |
+//! | `export-crates` | Exports all the used AWS crates as a module called `aws`                             | No.                 |
+//! | `unstable`      | Tap into unstable features from `remi_gridfs` and the `remi` crate.                  | No.                 |
+//! | [`tracing`]     | Enables the use of [`tracing::instrument`] and emit events for actions by the crate. | No.                 |
+//! | [`serde`]       | Enables the use of **serde** in `StorageConfig`                                      | No.                 |
+//! | [`log`]         | Emits log records for actions by the crate                                           | No.                 |
+//!
+//! [`tracing::instrument`]: https://docs.rs/tracing/*/tracing/attr.instrument.html
+//! [`tracing`]: https://crates.io/crates/tracing
+//! [`serde`]: https://serde.rs
+//! [`log`]: https://crates.io/crates/log
+
 #![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc(html_favicon_url = "https://cdn.floofy.dev/images/trans.png")]
 #![cfg_attr(any(noeldoc, docsrs), feature(doc_cfg))]

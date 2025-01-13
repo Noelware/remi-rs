@@ -6,7 +6,7 @@
 
 | Crate Features  | Description                                                                          | Enabled by default? |
 | :-------------- | :----------------------------------------------------------------------------------- | ------------------- |
-| `export-crates` | Exports all the used MongoDB crates as a module called `mongodb`                     | Yes.                |
+| `export-crates` | Exports all the used MongoDB crates as a module called `mongodb`                     | No.                |
 | `unstable`      | Tap into unstable features from `remi_gridfs` and the `remi` crate.                  | No.                 |
 | [`tracing`]     | Enables the use of [`tracing::instrument`] and emit events for actions by the crate. | No.                 |
 | [`serde`]       | Enables the use of **serde** in `StorageConfig`                                      | No.                 |
