@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
-// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2025 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -73,7 +73,7 @@ pub enum Error {
     ///
     /// * this would be thrown from the [`StorageService::init`][remi::StorageService::init]
     ///   trait method
-    CreateBucket(CreateBucketError),
+    CreateBucket(Box<CreateBucketError>),
 
     /// Amazon S3 was unable to get the object that you were looking for either
     /// from the [`StorageService::open`][remi::StorageService::open] or the
@@ -86,7 +86,7 @@ pub enum Error {
     ///
     /// * this would be thrown from the [`StorageService::open`][remi::StorageService::open]
     ///   or the [`StorageService::blob`][remi::StorageService::blob] trait methods.
-    GetObject(GetObjectError),
+    GetObject(Box<GetObjectError>),
 
     /// Amazon S3 was unable to list objects from the specific requirements that
     /// it was told to list objects from a [`ListBlobsRequest`][remi::ListBlobsRequest].
@@ -113,7 +113,7 @@ pub enum Error {
     /// Amazon S3 was unable to put an object into the service.
     ///
     /// * this would be thrown from the [`StorageService::upload`][remi::StorageService::upload] trait method.
-    PutObject(PutObjectError),
+    PutObject(Box<PutObjectError>),
 
     /// Occurs when an error occurred when transforming AWS S3's responses.
     ByteStream(aws_sdk_s3::primitives::ByteStreamError),
@@ -179,7 +179,7 @@ impl From<SdkError<CreateBucketError, Response<SdkBody>>> for Error {
             SdkError::DispatchFailure(err) => Self::DispatchFailure(err),
             SdkError::TimeoutError(err) => Self::TimeoutError(err),
             SdkError::ResponseError(err) => Self::Response(err),
-            err => Error::CreateBucket(err.into_service_error()),
+            err => Error::CreateBucket(Box::new(err.into_service_error())),
         }
     }
 }
@@ -191,14 +191,14 @@ impl From<SdkError<GetObjectError, Response<SdkBody>>> for Error {
             SdkError::DispatchFailure(err) => Self::DispatchFailure(err),
             SdkError::TimeoutError(err) => Self::TimeoutError(err),
             SdkError::ResponseError(err) => Self::Response(err),
-            err => Error::GetObject(err.into_service_error()),
+            err => Error::GetObject(Box::new(err.into_service_error())),
         }
     }
 }
 
 impl From<GetObjectError> for Error {
     fn from(value: GetObjectError) -> Self {
-        Self::GetObject(value)
+        Self::GetObject(Box::new(value))
     }
 }
 
@@ -251,7 +251,7 @@ impl From<SdkError<PutObjectError, Response<SdkBody>>> for Error {
             SdkError::DispatchFailure(err) => Self::DispatchFailure(err),
             SdkError::TimeoutError(err) => Self::TimeoutError(err),
             SdkError::ResponseError(err) => Self::Response(err),
-            err => Error::PutObject(err.into_service_error()),
+            err => Error::PutObject(Box::new(err.into_service_error())),
         }
     }
 }

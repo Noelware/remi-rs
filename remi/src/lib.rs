@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
-// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2025 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 //! **remi-rs** is a Rust edition of Noelware's Java library [remi](https://github.com/Noelware/remi) that was
 //! discontinuted on **December 15th, 2023** and is the primary library that Noelware uses and maintained.
 //!
@@ -41,6 +40,10 @@
 //! - [**remi-s3**](https://crates.io/crates/remi-s3)
 //! - [**remi-fs**](https://crates.io/crates/remi-fs)
 
+#![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
+#![doc(html_favicon_url = "https://cdn.floofy.dev/images/trans.png")]
+#![cfg_attr(any(noeldoc, docsrs), feature(doc_cfg))]
+
 use std::{borrow::Cow, path::Path};
 
 // re-export (just in case!~)
@@ -51,7 +54,6 @@ pub use async_trait::async_trait;
 pub use bytes::Bytes;
 
 mod blob;
-mod metadata;
 mod options;
 
 pub use blob::*;

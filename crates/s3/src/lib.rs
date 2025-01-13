@@ -1,5 +1,5 @@
 // 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
-// Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
+// Copyright (c) 2022-2025 Noelware, LLC. <team@noelware.org>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,14 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
 #![doc = include_str!("../README.md")]
+#![doc(html_logo_url = "https://cdn.floofy.dev/images/trans.png")]
+#![doc(html_favicon_url = "https://cdn.floofy.dev/images/trans.png")]
 #![cfg_attr(any(noeldoc, docsrs), feature(doc_cfg))]
-#![allow(
-    // We are aware that the `Err` variant for crate::Error is very large
-    // and we can't really do anything about it.
-    clippy::result_large_err
-)]
 
 mod config;
 mod error;

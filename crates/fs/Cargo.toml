@@ -1,5 +1,5 @@
 # 🐻‍❄️🧶 remi-rs: Asynchronous Rust crate to handle communication between applications and object storage providers
-# Copyright (c) 2022-2024 Noelware, LLC. <team@noelware.org>
+# Copyright (c) 2022-2025 Noelware, LLC. <team@noelware.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ etcetera = "0.8.0"
 file-format = { version = "0.26.0", features = ["reader-txt"], optional = true }
 infer = { version = "0.16.0", default-features = false, optional = true }
 log = { version = "0.4.22", optional = true }
-remi = { path = "../../remi", version = "0.10.0" }
+remi = { path = "../../remi", version = "0.10.1" }
 serde = { version = "1.0.210", features = ["derive"], optional = true }
 serde_json = { version = "1.0.128", optional = true }
 serde_yaml_ng = { version = "0.10.0", optional = true }

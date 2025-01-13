@@ -2,7 +2,7 @@
 <div align="center">
     <h3><code>remi-rs</code> by Noelware, LLC.</h3>
     <h4>Asynchronous Rust crate to handle communication between applications and object storage providers</h4>
-    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.10.0">v0.10.0</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.10.1">v0.10.1</a></kbd> | <a href="https://docs.rs/remi">📜 Documentation</a>
     <hr />
 </div>
 

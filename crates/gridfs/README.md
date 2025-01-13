@@ -1,6 +1,6 @@
 <div align="center">
     <h4>Official and maintained <code>remi-rs</code> crate for support of MongoDB GridFS</h4>
-    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.10.0">v0.10.0</a></kbd> | <a href="https://docs.rs/remi-gridfs">📜 Documentation</a>
+    <kbd><a href="https://github.com/Noelware/remi-rs/releases/0.10.1">v0.10.1</a></kbd> | <a href="https://docs.rs/remi-gridfs">📜 Documentation</a>
     <hr />
 </div>
 
