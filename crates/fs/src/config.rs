@@ -30,7 +30,7 @@ pub struct StorageConfig {
 }
 
 impl StorageConfig {
-    /// Creates a new [`Config`] instance.
+    /// Creates a new [`StorageConfig`] with a given root directory.
     pub fn new<P: AsRef<Path>>(path: P) -> StorageConfig {
         StorageConfig {
             directory: path.as_ref().into(),

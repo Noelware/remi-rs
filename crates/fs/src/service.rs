@@ -64,7 +64,7 @@ impl StorageService {
     /// Attempts to normalize a given path and returns a canonical, absolute
     /// path. It must follow some strict rules:
     ///
-    /// * If the path starts with `./`, then it will resolve from [`Config::directory`] if
+    /// * If the path starts with `./`, then it will resolve from [`StorageConfig::directory`] if
     ///   the directory was found. Otherwise, it'll use the current directory.
     ///
     /// * If the path starts with `~/`, then it will resolve from the home directory from [`etcetera::home_dir`].

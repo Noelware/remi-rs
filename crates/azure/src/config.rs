@@ -98,7 +98,7 @@ impl TryFrom<StorageConfig> for ContainerClient {
     }
 }
 
-/// Newtype enumeration around [`azure_core::CloudLocation`].
+/// Newtype enumeration around [`azure_storage::CloudLocation`].
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]

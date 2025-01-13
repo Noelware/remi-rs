@@ -6,7 +6,7 @@
 
 | Crate Features | Description                                                                          | Enabled by default? |
 | :------------- | :----------------------------------------------------------------------------------- | ------------------- |
-| `export-azure` | Exports all the used Azure crates as a module called `core`                          | Yes.                |
+| `export-azure` | Exports all the used Azure crates as a module called `core`                          | No.                 |
 | `unstable`     | Tap into unstable features from `remi_azure` and the `remi` crate.                   | No.                 |
 | [`tracing`]    | Enables the use of [`tracing::instrument`] and emit events for actions by the crate. | No.                 |
 | [`serde`]      | Enables the use of **serde** in `StorageConfig`                                      | No.                 |
