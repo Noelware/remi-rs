@@ -1,18 +1,29 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "automerge": true,
-    "extends": ["config:base", "default:timezone(America/Los_Angeles)", "docker:disableMajor"],
-    "assignees": ["auguwu", "spotlightishere"],
+    "extends": [
+        "config:recommended",
+        "default:timezone(America/Los_Angeles)",
+        "docker:disableMajor"
+    ],
+    "assignees": [
+        "auguwu",
+        "spotlightishere"
+    ],
     "vulnerabilityAlerts": {
-        "labels": ["security"]
+        "labels": [
+            "security"
+        ]
     },
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": ["\\.rs$"],
+            "fileMatch": [
+                "\\.rs$"
+            ],
             "datasourceTemplate": "docker",
             "matchStrings": [
-                "\/\/\\s?renovate: image=\"(?<depName>.*?)\"\\s?const ([A-Z]*): &str = \"?(?<currentValue>[\\w.-]*)\";"
+                "//\\s?renovate: image=\"(?<depName>.*?)\"\\s?const ([A-Z]*): &str = \"?(?<currentValue>[\\w.-]*)\";"
             ]
         }
     ]
