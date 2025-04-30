@@ -49,6 +49,12 @@ on:
             - '**.md'
             - LICENSE
             - renovate.json
+permissions:
+    contents: read
+    checks: write
+concurrency:
+    group: ${{github.workflow}}-${{github.ref}}
+    cancel-in-progress: true
 jobs:
     rust:
         name: Rust CI [${{matrix.rust-version}} on ${{matrix.runner == 'ubuntu-latest' && 'Linux (x86_64)' || matrix.runner == 'windows-latest' && 'Windows' || matrix.runner == 'macos-latest' && 'macOS' || matrix.runner == 'self-hosted' && 'Linux (arm64)' || matrix.runner}}]
