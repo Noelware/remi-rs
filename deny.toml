@@ -34,6 +34,9 @@ ignore = [
     # `paste` is used in `azure_core` and we can't bump higher since
     # it'll be a lot of breaking changes and we're not ready for it.
     "RUSTSEC-2024-0436",
+
+    # view above comment on why we can't upgrade `azure_core`, just yet.
+    "RUSTSEC-2024-0384",
 ]
 
 [bans]
