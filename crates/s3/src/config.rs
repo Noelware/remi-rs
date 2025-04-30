@@ -110,6 +110,7 @@ impl From<StorageConfig> for aws_sdk_s3::Config {
     }
 }
 
+// TODO(@auguwu): switch to `azalia_serde` once MSRV is 1.84
 #[cfg(feature = "serde")]
 mod __serde {
     pub mod region {

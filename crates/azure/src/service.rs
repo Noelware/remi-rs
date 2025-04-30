@@ -21,7 +21,7 @@
 
 use crate::StorageConfig;
 use async_trait::async_trait;
-use azure_core::request_options::{Metadata, Prefix};
+use azure_core::request_options::Metadata;
 use azure_storage::{ErrorKind, ResultExt};
 use azure_storage_blobs::prelude::ContainerClient;
 use bytes::Bytes;
@@ -231,30 +231,19 @@ impl remi::StorageService for StorageService {
         path: Option<P>,
         request: Option<ListBlobsRequest>,
     ) -> Result<Vec<Blob>, Self::Error> {
-        // TODO(@auguwu): support filtering files, for now we should probably
-        // heavily test this
-        #[allow(unused)]
-        if let Some(path) = path {
-            #[cfg(feature = "tracing")]
-            ::tracing::warn!(
-                file = %path.as_ref().display(),
-                "using blobs() with a given file name is not supported",
-            );
-
-            #[cfg(feature = "log")]
-            ::log::warn!(
-                "using blobs() with a given file name [{}] is not supported",
-                path.as_ref().display()
-            );
-
-            return Ok(vec![]);
-        }
-
         let options = request.unwrap_or_default();
         let mut blobs = self.container.list_blobs();
+        match path {
+            Some(path) => {
+                let path = self.sanitize_path(path)?;
+                blobs = blobs.prefix(path);
+            }
 
-        if let Some(prefix) = options.prefix {
-            blobs = blobs.prefix(Prefix::from(prefix.clone()));
+            None => {
+                if let Some(prefix) = options.prefix {
+                    blobs = blobs.prefix(prefix);
+                }
+            }
         }
 
         let mut stream = blobs.into_stream();
@@ -425,6 +414,24 @@ impl remi::StorageService for StorageService {
         }
 
         blob.metadata(metadata).await.map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{StorageConfig, StorageService};
+
+    #[test]
+    fn sanitize_paths() {
+        let storage = StorageService::new(StorageConfig::dummy()).unwrap();
+
+        assert_eq!(storage.sanitize_path("./weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(storage.sanitize_path("~/weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(storage.sanitize_path("weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(
+            storage.sanitize_path("~/weow/fluff/mooo.exe").unwrap(),
+            String::from("weow/fluff/mooo.exe")
+        );
     }
 }
 

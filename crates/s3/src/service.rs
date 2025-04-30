@@ -75,10 +75,16 @@ impl StorageService {
 
         // trim `./` and `~/` since S3 doesn't accept ./ or ~/ as valid paths
         let path = path.trim_start_matches("~/").trim_start_matches("./");
-        let prefix = self.config.prefix.clone().unwrap_or_default();
-        let prefix = prefix.trim_start_matches("~/").trim_start_matches("./");
+        let prefix = self.config.prefix.as_deref().unwrap_or_default();
 
-        Ok(format!("{prefix}/{path}"))
+        if prefix.is_empty() {
+            return Ok(path.to_owned());
+        }
+
+        Ok(format!(
+            "{prefix}/{path}",
+            prefix = prefix.trim_start_matches("~/").trim_start_matches("./")
+        ))
     }
 
     async fn s3_obj_to_blob(&self, entry: &Object) -> crate::Result<Option<Blob>> {
@@ -545,39 +551,113 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_resolve_path() {
+    fn resolve_path_without_prefix() {
         let storage = StorageService::new(StorageConfig::default());
-        assert_eq!(storage.resolve_path("./weow.txt").unwrap(), String::from("/weow.txt"));
-        assert_eq!(storage.resolve_path("~/weow.txt").unwrap(), String::from("/weow.txt"));
-        assert_eq!(storage.resolve_path("weow.txt").unwrap(), String::from("/weow.txt"));
+        assert_eq!(storage.resolve_path("./weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(storage.resolve_path("~/weow.txt").unwrap(), String::from("weow.txt"));
+        assert_eq!(storage.resolve_path("weow.txt").unwrap(), String::from("weow.txt"));
         assert_eq!(
             storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
-            String::from("/weow/fluff/wooo.exe")
+            String::from("weow/fluff/wooo.exe")
         );
 
         let storage = StorageService::new(StorageConfig {
-            prefix: Some(String::from("/wow/epic/sauce")),
+            prefix: Some(String::from("wow/epic/sauce")),
             ..Default::default()
         });
 
         assert_eq!(
             storage.resolve_path("./weow.txt").unwrap(),
-            String::from("/wow/epic/sauce/weow.txt")
+            String::from("wow/epic/sauce/weow.txt")
         );
 
         assert_eq!(
             storage.resolve_path("~/weow.txt").unwrap(),
-            String::from("/wow/epic/sauce/weow.txt")
+            String::from("wow/epic/sauce/weow.txt")
         );
 
         assert_eq!(
             storage.resolve_path("weow.txt").unwrap(),
-            String::from("/wow/epic/sauce/weow.txt")
+            String::from("wow/epic/sauce/weow.txt")
         );
 
         assert_eq!(
             storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
-            String::from("/wow/epic/sauce/weow/fluff/wooo.exe")
+            String::from("wow/epic/sauce/weow/fluff/wooo.exe")
+        );
+    }
+
+    #[test]
+    fn resolve_path_with_prefix() {
+        let storage = StorageService::new(StorageConfig {
+            prefix: Some("wwww".into()),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            storage.resolve_path("./weow.txt").unwrap(),
+            String::from("wwww/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow.txt").unwrap(),
+            String::from("wwww/weow.txt")
+        );
+
+        assert_eq!(storage.resolve_path("weow.txt").unwrap(), String::from("wwww/weow.txt"));
+        assert_eq!(
+            storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
+            String::from("wwww/weow/fluff/wooo.exe")
+        );
+
+        let storage = StorageService::new(StorageConfig {
+            prefix: Some(String::from("wwww/wow/epic/sauce")),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            storage.resolve_path("./weow.txt").unwrap(),
+            String::from("wwww/wow/epic/sauce/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow.txt").unwrap(),
+            String::from("wwww/wow/epic/sauce/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("weow.txt").unwrap(),
+            String::from("wwww/wow/epic/sauce/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
+            String::from("wwww/wow/epic/sauce/weow/fluff/wooo.exe")
+        );
+
+        let storage = StorageService::new(StorageConfig {
+            prefix: Some("~/hello".into()),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            storage.resolve_path("./weow.txt").unwrap(),
+            String::from("hello/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow.txt").unwrap(),
+            String::from("hello/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("weow.txt").unwrap(),
+            String::from("hello/weow.txt")
+        );
+
+        assert_eq!(
+            storage.resolve_path("~/weow/fluff/wooo.exe").unwrap(),
+            String::from("hello/weow/fluff/wooo.exe")
         );
     }
 }

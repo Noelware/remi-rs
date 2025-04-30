@@ -48,7 +48,7 @@ azure_storage_blobs = "0.21.0"
 bytes = "1.7.2"
 futures-util = "0.3.31"
 log = { version = "0.4.22", optional = true }
-remi = { path = "../../remi", version = "0.11.0" }
+remi = { path = "../../remi", version = "=0.10.2" }
 serde = { version = "1.0.210", features = ["derive"], optional = true }
 tracing = { version = "0.1.40", optional = true }
 
