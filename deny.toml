@@ -22,14 +22,6 @@
 # we only support the following targets below
 [graph]
 all-features = true
-targets = [
-    { triple = "x86_64-unknown-linux-gnu" },
-    { triple = "x86_64-unknown-linux-musl" },
-    { triple = "x86_64-apple-darwin" },
-    { triple = "aarch64-unknown-linux-gnu" },
-    { triple = "aarch64-apple-darwin" },
-    { triple = "x86_64-pc-windows-msvc" },
-]
 
 [advisories]
 # We use version 2 of the advisory config, which
@@ -38,6 +30,11 @@ targets = [
 #
 # See also: https://github.com/EmbarkStudios/cargo-deny/pull/611
 version = 2
+ignore = [
+    # `paste` is used in `azure_core` and we can't bump higher since
+    # it'll be a lot of breaking changes and we're not ready for it.
+    "RUSTSEC-2024-0436",
+]
 
 [bans]
 multiple-versions = "warn"
