@@ -26,19 +26,13 @@
     if stdenv.isLinux
     then ''-C link-arg=-fuse-ld=mold -C target-cpu=native''
     else "$RUSTFLAGS";
-
-  darwinBuildInputs = with darwin.apple_sdk.frameworks; [
-    CoreFoundation
-    Security
-  ];
 in
   mkShell {
     LD_LIBRARY_PATH = lib.makeLibraryPath (with pkgs; [openssl]);
 
     nativeBuildInputs = with pkgs;
       [pkg-config]
-      ++ (lib.optional stdenv.isLinux [mold lldb])
-      ++ (lib.optional stdenv.isDarwin darwinBuildInputs);
+      ++ (lib.optional stdenv.isLinux [mold lldb]);
 
     buildInputs = with pkgs; [
       cargo-outdated
