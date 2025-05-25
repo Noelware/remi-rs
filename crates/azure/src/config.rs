@@ -19,7 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use azure_core::auth::Secret;
 use azure_storage::StorageCredentials;
 use azure_storage_blobs::prelude::{ClientBuilder, ContainerClient};
 
@@ -72,13 +71,11 @@ pub enum Credential {
 }
 
 impl TryFrom<Credential> for StorageCredentials {
-    type Error = azure_core::Error;
+    type Error = azure_storage::Error;
 
     fn try_from(value: Credential) -> Result<Self, Self::Error> {
         match value {
-            Credential::AccessKey { account, access_key } => {
-                Ok(StorageCredentials::access_key(account, Secret::new(access_key)))
-            }
+            Credential::AccessKey { account, access_key } => Ok(StorageCredentials::access_key(account, access_key)),
 
             Credential::SASToken(token) => StorageCredentials::sas_token(token),
             Credential::Bearer(token) => Ok(StorageCredentials::bearer_token(token)),
@@ -88,7 +85,7 @@ impl TryFrom<Credential> for StorageCredentials {
 }
 
 impl TryFrom<StorageConfig> for ContainerClient {
-    type Error = azure_core::Error;
+    type Error = azure_storage::Error;
 
     fn try_from(value: StorageConfig) -> Result<Self, Self::Error> {
         Ok(

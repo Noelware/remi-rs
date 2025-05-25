@@ -21,9 +21,8 @@
 
 use crate::StorageConfig;
 use async_trait::async_trait;
-use azure_core::request_options::Metadata;
 use azure_storage::{ErrorKind, ResultExt};
-use azure_storage_blobs::prelude::ContainerClient;
+use azure_storage_blobs::{blob::operations::GetMetadataResponse, prelude::ContainerClient};
 use bytes::Bytes;
 use futures_util::StreamExt;
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
@@ -39,7 +38,7 @@ pub struct StorageService {
 
 impl StorageService {
     /// Creates a new [`StorageService`] with a provided [`StorageConfig`].
-    pub fn new(config: StorageConfig) -> Result<StorageService, azure_core::Error> {
+    pub fn new(config: StorageConfig) -> Result<StorageService, azure_storage::Error> {
         Ok(Self {
             container: config.clone().try_into()?,
             config,
@@ -54,11 +53,11 @@ impl StorageService {
         }
     }
 
-    fn sanitize_path<P: AsRef<Path> + Send>(&self, path: P) -> azure_core::Result<String> {
+    fn sanitize_path<P: AsRef<Path> + Send>(&self, path: P) -> Result<String, azure_storage::Error> {
         let path = path
             .as_ref()
             .to_str()
-            .ok_or_else(|| azure_core::Error::new(ErrorKind::Other, "was not valid utf-8"))
+            .ok_or_else(|| azure_storage::Error::new(ErrorKind::Other, "was not valid utf-8"))
             .with_context(ErrorKind::Other, || "failed to convert path into a string")?;
 
         let path = path.trim_start_matches("./").trim_start_matches("~/");
@@ -76,7 +75,7 @@ impl Deref for StorageService {
 
 #[async_trait]
 impl remi::StorageService for StorageService {
-    type Error = azure_core::Error;
+    type Error = azure_storage::Error;
 
     fn name(&self) -> Cow<'static, str> {
         Cow::Borrowed("remi:azure")
@@ -208,8 +207,8 @@ impl remi::StorageService for StorageService {
             path: format!("azure://{}", props.blob.name),
             name: props.blob.name,
             size: props.blob.properties.content_length.try_into().map_err(|e| {
-                azure_core::Error::new(
-                    azure_core::error::ErrorKind::Other,
+                azure_storage::Error::new(
+                    ErrorKind::Other,
                     format!("expected content length to fit into `usize`: {e}"),
                 )
             })?,
@@ -277,8 +276,8 @@ impl remi::StorageService for StorageService {
                     path: format!("azure://{}", blob.name),
                     name: blob.name.clone(),
                     size: blob.properties.content_length.try_into().map_err(|e| {
-                        azure_core::Error::new(
-                            azure_core::error::ErrorKind::Other,
+                        azure_storage::Error::new(
+                            ErrorKind::Other,
                             format!("expected content length to fit into `usize`: {e}"),
                         )
                     })?,
@@ -408,7 +407,33 @@ impl remi::StorageService for StorageService {
             blob = blob.content_type(ct);
         }
 
-        let mut metadata = Metadata::new();
+        // The two Azure storage crates we use are currently unsupported.
+        //
+        // Normally, one would prefer to use
+        // `azure_core::http::request::options::Metadata`,
+        // but as `azure_storage_blobs` is stuck to v0.21.0,
+        // azure_core v0.21.0 instead provides a different type,
+        // `azure_core::request_options::Metadata`.
+        //
+        // We work around this by creating an GetMetadataResponse.
+        // This allows us to instantiate the `Metadata` type
+        // without actually importing this older version of azure_core.
+        //
+        // Naturally, this should not be relied on long-term.
+        // A replacement crate, `azure_storage_blob`, will replace
+        // the usage of both `azure_storage` and `azure_storage_blobs`.
+        //
+        // Refer to the upstream issue for further information:
+        // https://github.com/Azure/azure-sdk-for-rust/issues/2504
+        let dummy_response = GetMetadataResponse {
+            request_id: Default::default(),
+            etag: Default::default(),
+            server: Default::default(),
+            date: std::time::SystemTime::now().into(),
+            metadata: Default::default(),
+        };
+
+        let mut metadata = dummy_response.metadata;
         for (key, value) in options.metadata.clone() {
             metadata.insert(key.as_str(), remi::Bytes::from(value));
         }

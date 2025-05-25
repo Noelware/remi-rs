@@ -42,7 +42,16 @@ log = ["dep:log"]
 
 [dependencies]
 async-trait = "0.1.83"
-azure_core = "0.21.0"
+# Currently, these two Azure storage crates are unsupported.
+# We currently we use a workaround involving `http` headers
+# being available to insert metadata with, but this should not
+# be relied on long-term.
+#
+# A replacement crate, `azure_storage_blob`, will replace
+# the usage of both `azure_storage` and `azure_storage_blobs`.
+#
+# Refer to the upstream issue for further information:
+# https://github.com/Azure/azure-sdk-for-rust/issues/2504
 azure_storage = "0.21.0"
 azure_storage_blobs = "0.21.0"
 bytes = "1.7.2"
