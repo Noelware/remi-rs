@@ -18,8 +18,8 @@
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": [
-                "\\.rs$"
+            "managerFilePatterns": [
+                "/\\.rs$/"
             ],
             "datasourceTemplate": "docker",
             "matchStrings": [
