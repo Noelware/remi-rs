@@ -149,7 +149,7 @@ impl StorageService {
             Ok(ref m) => Some(
                 m.modified()?
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|_| io::Error::new(io::ErrorKind::Other, "clock went backwards?!"))?
+                    .map_err(|_| io::Error::other("clock went backwards?!"))?
                     .as_millis(),
             ),
 
@@ -160,7 +160,7 @@ impl StorageService {
             Ok(ref m) => Some(
                 m.created()?
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|_| io::Error::new(io::ErrorKind::Other, "clock went backwards?!"))?
+                    .map_err(|_| io::Error::other("clock went backwards?!"))?
                     .as_millis(),
             ),
 
@@ -191,7 +191,7 @@ impl StorageService {
             Ok(ref m) => Some(
                 m.modified()?
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|_| io::Error::new(io::ErrorKind::Other, "clock went backwards?!"))?
+                    .map_err(|_| io::Error::other("clock went backwards?!"))?
                     .as_millis(),
             ),
 
@@ -202,7 +202,7 @@ impl StorageService {
             Ok(ref m) => Some(
                 m.created()?
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|_| io::Error::new(io::ErrorKind::Other, "clock went backwards?!"))?
+                    .map_err(|_| io::Error::other("clock went backwards?!"))?
                     .as_millis(),
             ),
 
@@ -460,7 +460,7 @@ impl remi::StorageService for StorageService {
                         Ok(sys) => Some(
                             sys.created()?
                                 .duration_since(SystemTime::UNIX_EPOCH)
-                                .map_err(|_| io::Error::new(io::ErrorKind::Other, "clock went backwards?!"))?
+                                .map_err(|_| io::Error::other("clock went backwards?!"))?
                                 .as_millis(),
                         ),
 
