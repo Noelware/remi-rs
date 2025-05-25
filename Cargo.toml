@@ -33,7 +33,3 @@ authors = [
     "Noel Towa <cutie@floofy.dev>",
     "Spotlight <spotlight@joscomputing.space>",
 ]
-
-[workspace.dependencies]
-bollard = "0.18.0"
-testcontainers = "0.24.0"
