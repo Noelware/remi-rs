@@ -64,7 +64,7 @@ jobs:
                 rust-version: [stable, nightly]
                 runner: [ubuntu-latest, windows-latest, macos-latest]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - run: rm rust-toolchain.toml
             - uses: dtolnay/rust-toolchain@master
               with:
@@ -86,7 +86,7 @@ jobs:
         name: Clippy
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - uses: dtolnay/rust-toolchain@stable
               with:
                 components: clippy, rustfmt
@@ -100,7 +100,7 @@ jobs:
         name: '`cargo deny`'
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - uses: taiki-e/install-action@cargo-deny
               with:
                   tool: cargo-deny
@@ -110,7 +110,7 @@ jobs:
         name: Report Missing Dependencies
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - uses: taiki-e/install-action@cargo-machete
               with:
                   tool: cargo-machete
