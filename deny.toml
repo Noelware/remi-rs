@@ -64,11 +64,7 @@ allow = [
     "Unicode-3.0",
 ]
 exceptions = [
-    # unicode-ident includes data generated from Unicode Character Database
-    # which is licensed under Unicode-DFS-2016.
-    # See https://github.com/dtolnay/unicode-ident/pull/4
-    { name = "unicode-ident", allow = ["Unicode-DFS-2016"] },
-    { name = "ring", allow = ["OpenSSL"] },
+    { name = "webpki-roots", allow = ["CDLA-Permissive-2.0"] },
 ]
 
 # Sigh
