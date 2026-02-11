@@ -42,7 +42,7 @@ log = ["dep:log"]
 
 [dependencies]
 async-trait = "0.1.83"
-azure_core = "0.31.0"
+azure_core = "0.32.0"
 # Currently, these two Azure storage crates are unsupported.
 # We currently we use a workaround involving `http` headers
 # being available to insert metadata with, but this should not
