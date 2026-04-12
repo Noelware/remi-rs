@@ -92,7 +92,7 @@ jobs:
                 components: clippy, rustfmt
 
             - uses: Swatinem/rust-cache@v2
-            - uses: auguwu/clippy-action@1.4.0
+            - uses: auguwu/clippy-action@1.5.0
               with:
                 all-features: true
                 token: ${{secrets.GITHUB_TOKEN}}
