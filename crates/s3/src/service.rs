@@ -21,11 +21,11 @@
 
 use crate::StorageConfig;
 use aws_sdk_s3::{
+    Client, Config,
     primitives::ByteStream,
     types::{BucketCannedAcl, Object, ObjectCannedAcl},
-    Client, Config,
 };
-use remi::{async_trait, Blob, Bytes, Directory, File, ListBlobsRequest, UploadRequest};
+use remi::{Blob, Bytes, Directory, File, ListBlobsRequest, UploadRequest, async_trait};
 use std::{borrow::Cow, path::Path};
 
 const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";

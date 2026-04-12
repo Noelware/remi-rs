@@ -82,7 +82,7 @@ fn serialize_selection_criteria<S: ::serde::ser::Serializer>(
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     use ::mongodb::options::ReadPreference;
-    use ::serde::{ser::Error, Serialize};
+    use ::serde::{Serialize, ser::Error};
 
     if let Some(value) = value {
         if matches!(value, SelectionCriteria::Predicate(_)) {

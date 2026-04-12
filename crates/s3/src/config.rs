@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 use aws_config::AppName;
-use aws_credential_types::{provider::SharedCredentialsProvider, Credentials};
+use aws_credential_types::{Credentials, provider::SharedCredentialsProvider};
 use aws_sdk_s3::{
     config::Region,
     types::{BucketCannedAcl, ObjectCannedAcl},
@@ -115,7 +115,7 @@ impl From<StorageConfig> for aws_sdk_s3::Config {
 mod __serde {
     pub mod region {
         use aws_sdk_s3::config::Region;
-        use serde::{de::Deserializer, ser::Serializer, Deserialize};
+        use serde::{Deserialize, de::Deserializer, ser::Serializer};
         use std::borrow::Cow;
 
         pub fn serialize<S: Serializer>(region: &Option<Region>, serializer: S) -> Result<S::Ok, S::Error> {

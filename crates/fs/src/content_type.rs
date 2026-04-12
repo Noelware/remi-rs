@@ -57,7 +57,7 @@ pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
             | serde_json::Value::Null => return Cow::Borrowed("text/plain"),
 
             serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
-                return Cow::Borrowed("application/json; charset=utf-8")
+                return Cow::Borrowed("application/json; charset=utf-8");
             }
         }
     }
@@ -101,7 +101,7 @@ pub fn default_resolver(data: &[u8]) -> Cow<'static, str> {
             | serde_json::Value::Null => return Cow::Borrowed("text/plain"),
 
             serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
-                return Cow::Borrowed("application/json; charset=utf-8")
+                return Cow::Borrowed("application/json; charset=utf-8");
             }
         }
     }

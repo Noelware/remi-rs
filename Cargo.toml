@@ -27,8 +27,8 @@ members = ["crates/*", "remi"]
 version = "0.10.2"
 repository = "https://github.com/Noelware/remi-rs"
 license = "MIT"
-edition = "2021"
-rust-version = "1.80"
+edition = "2024"
+rust-version = "1.94"
 authors = [
     "Noel Towa <cutie@floofy.dev>",
     "Spotlight <spotlight@joscomputing.space>",

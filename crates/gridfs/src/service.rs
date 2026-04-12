@@ -24,10 +24,10 @@ use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures_util::{AsyncWriteExt, StreamExt};
 use mongodb::{
-    bson::{doc, raw::ValueAccessErrorKind, Bson, Document, RawDocument},
+    Client, Database,
+    bson::{Bson, Document, RawDocument, doc, raw::ValueAccessErrorKind},
     gridfs::GridFsBucket,
     options::GridFsUploadOptions,
-    Client, Database,
 };
 use remi::{Blob, File, ListBlobsRequest, UploadRequest};
 use std::{borrow::Cow, collections::HashMap, io, path::Path};
@@ -76,10 +76,10 @@ fn document_to_blob(bytes: Bytes, doc: &RawDocument) -> Result<File, mongodb::er
     let mut map = HashMap::new();
     for ref_ in metadata.into_iter() {
         let (name, doc) = ref_?;
-        if name != "contentType" {
-            if let Some(s) = doc.as_str() {
-                map.insert(name.into(), s.into());
-            }
+        if name != "contentType"
+            && let Some(s) = doc.as_str()
+        {
+            map.insert(name.into(), s.into());
         }
     }
 

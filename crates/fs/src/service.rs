@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::{default_resolver, ContentTypeResolver, StorageConfig};
-use remi::{async_trait, Blob, Bytes, Directory, File, ListBlobsRequest, StorageService as _, UploadRequest};
+use crate::{ContentTypeResolver, StorageConfig, default_resolver};
+use remi::{Blob, Bytes, Directory, File, ListBlobsRequest, StorageService as _, UploadRequest, async_trait};
 use std::{
     borrow::Cow,
     io,
