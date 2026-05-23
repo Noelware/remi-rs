@@ -44,7 +44,9 @@ log = ["dep:log"]
 [dependencies]
 aws-config = "1.5.8"
 aws-credential-types = "1.2.1"
-aws-sdk-s3 = { version = "1.56.0", features = ["behavior-version-latest"] }
+# Temporarily only use the default HTTPS client to avoid pulling in legacy rustls.
+# See also: https://github.com/smithy-lang/smithy-rs/issues/4651#issuecomment-4482100345
+aws-sdk-s3 = { version = "1.56.0", default-features = false, features = ["behavior-version-latest", "rt-tokio", "default-https-client"] }
 aws-smithy-runtime-api = "1.7.2"
 log = { version = "0.4.22", optional = true }
 remi = { path = "../../remi", version = "=0.10.3" }
