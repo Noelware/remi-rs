@@ -37,6 +37,13 @@ ignore = [
 
     # view above comment on why we can't upgrade `azure_core`, just yet.
     "RUSTSEC-2024-0384",
+
+    # quick-xml's denial-of-service should only occur
+    # with untrusted XML, and we assume that Azure is safe.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+    # This issue (via Azure) does not affect us.
+    "RUSTSEC-2026-0174",
 ]
 
 [bans]
