@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 [toolchain]
-channel = "1.97"
+channel = "1.98"
 profile = "minimal"
 components = [
     "rustc",
